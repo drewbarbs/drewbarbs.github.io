@@ -85,9 +85,19 @@ body {
     margin: 0 auto;
 }
 
-article p, article li {
+article p, article li, article figure {
     font-family: 'Noto Serif', serif;
     font-size: .95em;
+}
+
+figure {
+    text-align: center;
+}
+
+div.sourceCode {
+    border: 1px solid #ccc;
+    box-shadow: 3px 3px 3px #eee;
+    padding: 8pt;
 }
 
 #footnotes {

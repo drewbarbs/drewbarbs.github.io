@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+    <title>Drew Barbarello's Blog</title>
+    <link rel="stylesheet" href="https://dbarbs.net/theme/css/main.css" />
+    <link href="https://dbarbs.net/theme/css/font-awesome.min.css" rel="stylesheet"/>
+    <link href="https://dbarbs.net/theme/css/skylighting.css" rel="stylesheet">
+    <script type="text/javascript" async
+            src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.2/MathJax.js?config=TeX-MML-AM_CHTML">
+    </script>
+    <link rel="icon" type="image/gif" href="/favicon.gif"/>
+
+    <link href="https://dbarbs.net/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="Drew Barbarello's Blog Atom Feed" />
+
+
+  </head>
+
+  <body id="index" class="home">
+    <header id="banner" class="body">
+      <h1><a href="https://dbarbs.net">Drew Barbarello's Blog <strong></strong></a></h1>
+      <nav id="menu"><ul>
+          <li><a href="https://dbarbs.net/">Home</a></li>
+            <li><a href="https://dbarbs.net/pages/about.html">About</a></li>
+          <li><a href="https://dbarbs.net/archives.html">Archive</a></li>
+      </ul></nav><!-- /#menu -->
+
+    </header><!-- /#banner -->
+    <div id="wrap">
+
+    <input type="checkbox" id="width_sidebar">
+    <label for="width_sidebar"><span>hide the sidebar</span></label>
+
+    <section id="content">
+  <article class="hentry">
+    <header>
+      <h1 class="entry-title">
+        Deriving Perspective and Parallel Projection Matrices
+      </h1>
+      <time class="published" datetime="2018-05-28T00:00:00-04:00">Mon, 28 May 2018</time>
+      
+    </header>
+    <div class="entry-content">
+      <h2 id="the-perspective-projection-matrix">The Perspective Projection Matrix</h2>
+<p>Here, we’re going to derive the <a href="https://www.opengl.org/sdk/docs/man2/xhtml/glFrustum.xml"><code>glFrustum</code></a> Perspective Projection matrix, which maps the <em>perspective</em> view volume to the <em>parallel</em> view volume. We start with coordinates in “eye space”, near and far clip plane distances <span class="math inline">\(n\)</span> and <span class="math inline">\(f\)</span> (a.k.a. <code>zNear, zFar</code>), and bounds <span class="math inline">\(t, b, l, r\)</span> for the “general imaging rectangle” on the near clip plane as in Figure <a href="#dppfig1">1</a>.</p>
+<p><a id="dppfig1"></a></p>
+<figure>
+<img src="/img/general_view_rect.png" title="The “general imaging rectangle” on the near clip plane&lt;sup&gt;1&lt;/sup&gt;" alt="Figure 1: The “general imaging rectangle” on the near clip plane [1]" /><figcaption>Figure 1: The “general imaging rectangle” on the near clip plane [<a href="#dppref1">1</a>]</figcaption>
+</figure>
+<p>Then, we’re mapping the imaging rectangle on the near clip plane <span class="math inline">\(z=-n \;\;(l \leq x \leq r, \; b \leq y \leq t)\)</span> to <span class="math inline">\(z=-1 \;\; (-1 \leq x, y \leq 1)\)</span>, and mapping the corresponding rectangle on the far clip plane (the intersection of the rays from the eye to the bounds of the imaging rectangle with the far clip plane) to <span class="math inline">\(z=1 \;\; (-1 \leq x, y \leq 1)\)</span> (after homogenizing). See Figure <a href="#dppfig2">2</a></p>
+<figure>
+<img src="/img/gl_projectionmatrix01.png" title="The transformation we would like to find from the perspective view volume to the standard view volume.&lt;sup&gt;2&lt;/sup&gt;" alt="Figure 2: The transformation we would like to find from the perspective view volume to the standard view volume. [2]" /><figcaption>Figure 2: The transformation we would like to find from the perspective view volume to the standard view volume. [<a href="#dppref2">2</a>]</figcaption>
+</figure>
+<h3 id="approach">Approach</h3>
+<p>While the derivations at <a href="http://www.songho.ca/opengl/gl_projectionmatrix.html">songho.ca</a> and <a href="https://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-projection-matrix/building-basic-perspective-projection-matrix">scratchapixel.com</a> are great, they both take incremental approaches, solving for matrix entries one or a few at a time and plugging them in. Instead, I find it easier to follow the derivation if we just pick a handful of points in the preimage and image of the desired transformation and use a linear algebra package (<a href="http://www.sympy.org/en/index.html">Sympy</a>) to do the tedious work of solving for the transformation matrix.</p>
+<p>Given 5 points <span class="math inline">\(\mathbf{a},\mathbf{b},\mathbf{c},\mathbf{d},\mathbf{e} \in \mathbb{RP}^3\)</span>, of which no four are linearly dependent, there is a unique (up to a scalar multiple) projective transformation mapping the points <span class="math inline">\(\left[\begin{matrix}1\\0\\0\\0\end{matrix}\right],\left[\begin{matrix}0\\1\\0\\0\end{matrix}\right],\left[\begin{matrix}0\\0\\1\\0\end{matrix}\right],\left[\begin{matrix}0\\0\\0\\1\end{matrix}\right],\left[\begin{matrix}1\\1\\1\\1\end{matrix}\right]\)</span> (the “quadrilateral of reference” and the “unit” point) to <span class="math inline">\(\mathbf{a},\mathbf{b},\mathbf{c},\mathbf{d},\mathbf{e}\)</span>. We use an extension of the strategy outlined in section 3.3 of [<a href="#dppref3">3</a>] to prove this by construction.</p>
+<p>Clearly, for the quadrilateral of reference to be taken to <span class="math inline">\(\mathbf{a},\mathbf{b},\mathbf{c},\mathbf{d},\mathbf{e}\)</span>, the matrix <span class="math inline">\(\mathbf{A}\)</span> of the transformation must be of the form <span class="math display">\[
+\left[\begin{matrix}a_{1} u &amp; b_{1} v &amp; c_{1} w &amp; d_{1} x\\a_{2} u &amp;
+b_{2} v &amp; c_{2} w &amp; d_{2} x\\a_{3} u &amp; b_{3} v &amp; c_{3} w &amp; d_{3}
+x\\a_{4} u &amp; b_{4} v &amp; c_{4} w &amp; d_{4} x\end{matrix}\right] \]</span> for some non-zero <span class="math inline">\(u,v,w,x\)</span>. We also require that</p>
+<p><span class="math display">\[\begin{align*}
+\left[\begin{matrix}a_{1} u &amp; b_{1} v &amp; c_{1} w &amp; d_{1} x\\a_{2} u &amp; b_{2} v &amp; c_{2} w &amp; d_{2} x\\a_{3} u &amp; b_{3} v &amp; c_{3} w &amp; d_{3} x\\a_{4} u &amp; b_{4} v &amp; c_{4} w &amp; d_{4} x\end{matrix}\right] \left[\begin{matrix}1\\1\\1\\1\end{matrix}\right] &amp;= \left[\begin{matrix}e_{1}\\e_{2}\\e_{3}\\e_{4}\end{matrix}\right] \\
+\implies
+u\left[\begin{matrix}a_{1}\\a_{2}\\a_{3}\\a_{4}\end{matrix}\right] + v \left[\begin{matrix}b_{1}\\b_{2}\\b_{3}\\b_{4}\end{matrix}\right] + w \left[\begin{matrix}c_{1}\\c_{2}\\c_{3}\\c_{4}\end{matrix}\right] + x \left[\begin{matrix}d_{1}\\d_{2}\\d_{3}\\d_{4}\end{matrix}\right] &amp;= \left[\begin{matrix}e_{1}\\e_{2}\\e_{3}\\e_{4}\end{matrix}\right]
+\end{align*}\]</span></p>
+<p>Since <span class="math inline">\(\mathbf{a},\mathbf{b},\mathbf{c},\mathbf{d}\)</span> constitute a basis for <span class="math inline">\(\mathbb{R}^4\)</span>, there exist unique <span class="math inline">\(u,v,w,x\)</span> satisfying the above: the coordinates of <span class="math inline">\(\mathbf{e}\)</span> in the <span class="math inline">\(\mathbf{a},\mathbf{b},\mathbf{c},\mathbf{d}\)</span> basis. Furthermore, none of <span class="math inline">\(u,v,w,x\)</span> will be zero, since no four of <span class="math inline">\(\mathbf{a},\mathbf{b},\mathbf{c},\mathbf{d},\mathbf{e}\)</span> are linearly dependent. Finally, since the columns of <span class="math inline">\(\mathbf{A}\)</span> are non-zero multiples of linearly independent vectors, <span class="math inline">\(\mathbf{A}\)</span> is invertible. Thus the projective transformation <span class="math inline">\(t: [\mathbf{x}] \mapsto [\mathbf{A}\mathbf{x}]\)</span> exists and is unique.</p>
+<p>We now use the theorem above to find the matrix of the transformation taking the perspective view volume to the standard one. We pick 5 points on the <em>perspective</em> view volume, and the 5 points on the standard <em>parallel</em> view volume to which we want them taken, such that for each set of points, no four of them are linearly dependent. We’ll then find the transformations <span class="math inline">\(t_1: [\mathbf{x}] \mapsto [\mathbf{A}_1\mathbf{x}], t_2: [\mathbf{x}] \mapsto [\mathbf{A}_2\mathbf{x}]\)</span> taking the “quadrilateral of reference” and the “unit” point to each set of points (guaranteed to exist by the theorem). Finally, we’ll be able to compute <span class="math inline">\(t = t_2 \circ t_1^{-1} : [\mathbf{x}] \mapsto [\mathbf{A}_2\mathbf{A}_1^{-1}\mathbf{x}]\)</span>. The matrix <span class="math inline">\(\mathbf{A}_2\mathbf{A}_1^{-1}\)</span> of this transformation will be the projection matrix.</p>
+<h2 id="derivation">Derivation</h2>
+<p>First, we’ll import what we need from Sympy to work this out.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode python"><code class="sourceCode python"><a class="sourceLine" id="cb1-1" data-line-number="1"><span class="im">from</span> sympy <span class="im">import</span> ones, Matrix, linsolve, latex, ratsimp, together, symbols</a>
+<a class="sourceLine" id="cb1-2" data-line-number="2"><span class="im">from</span> sympy.abc <span class="im">import</span> n, f, l, r, t, b, u, v, w, x</a></code></pre></div>
+<p>Next, we’ll create Sympy vectors for the points we’re mapping from/to.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode python"><code class="sourceCode python"><a class="sourceLine" id="cb2-1" data-line-number="1"><span class="co"># Points in the perspective view volume in eye space, no four of which</span></a>
+<a class="sourceLine" id="cb2-2" data-line-number="2"><span class="co"># are linearly dependent (these are all column vectors)</span></a>
+<a class="sourceLine" id="cb2-3" data-line-number="3">eye_p <span class="op">=</span> Matrix([<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">1</span>])</a>
+<a class="sourceLine" id="cb2-4" data-line-number="4">near_center <span class="op">=</span> Matrix([(l <span class="op">+</span> r)<span class="op">/</span><span class="dv">2</span>, (t<span class="op">+</span>b)<span class="op">/</span><span class="dv">2</span>, <span class="op">-</span>n, <span class="dv">1</span>])</a>
+<a class="sourceLine" id="cb2-5" data-line-number="5">far_top_center <span class="op">=</span> Matrix([f<span class="op">*</span>(l <span class="op">+</span> r)<span class="op">/</span>(<span class="dv">2</span><span class="op">*</span>n), f<span class="op">*</span>t<span class="op">/</span>n, <span class="op">-</span>f, <span class="dv">1</span>])</a>
+<a class="sourceLine" id="cb2-6" data-line-number="6">far_top_left <span class="op">=</span> Matrix([f<span class="op">*</span>l<span class="op">/</span>n, f<span class="op">*</span>t<span class="op">/</span>n, <span class="op">-</span>f, <span class="dv">1</span>])</a>
+<a class="sourceLine" id="cb2-7" data-line-number="7">near_bottom_left <span class="op">=</span> Matrix([l, b, <span class="op">-</span>n, <span class="dv">1</span>])</a>
+<a class="sourceLine" id="cb2-8" data-line-number="8"></a>
+<a class="sourceLine" id="cb2-9" data-line-number="9"><span class="co"># Points to which the above are mapped: the eye point is mapped to the</span></a>
+<a class="sourceLine" id="cb2-10" data-line-number="10"><span class="co"># &quot;ideal&quot; point, the remaining points are mapped to corresponding points in the</span></a>
+<a class="sourceLine" id="cb2-11" data-line-number="11"><span class="co"># normalized parallel view volume</span></a>
+<a class="sourceLine" id="cb2-12" data-line-number="12">ideal <span class="op">=</span> Matrix([<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">0</span>])</a>
+<a class="sourceLine" id="cb2-13" data-line-number="13">n_near_center <span class="op">=</span> Matrix([<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">-1</span>, <span class="dv">1</span>])</a>
+<a class="sourceLine" id="cb2-14" data-line-number="14">n_far_top_center <span class="op">=</span> Matrix([<span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>])</a>
+<a class="sourceLine" id="cb2-15" data-line-number="15">n_far_top_left <span class="op">=</span> Matrix([<span class="op">-</span><span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>])</a>
+<a class="sourceLine" id="cb2-16" data-line-number="16">n_near_bottom_left <span class="op">=</span> Matrix([<span class="op">-</span><span class="dv">1</span>,<span class="op">-</span><span class="dv">1</span>,<span class="op">-</span><span class="dv">1</span>, <span class="dv">1</span>])</a>
+<a class="sourceLine" id="cb2-17" data-line-number="17">unit <span class="op">=</span> ones(<span class="dv">4</span>,<span class="dv">1</span>)</a></code></pre></div>
+<p>We’ll define a helper matrix <span class="math inline">\(UVWX\)</span> where every entry in the first column is equal to <span class="math inline">\(u\)</span>, the second column is all <span class="math inline">\(v\)</span>’s, etc. Then, if we take a matrix with 4 of our reference points as columns, and multiply it with <span class="math inline">\(UVWX\)</span> <em>elementwise</em>, we’ll get a matrix like <span class="math inline">\(\mathbf{A}\)</span> above where we just need to solve for <span class="math inline">\(u, v, w, x\)</span>.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode python"><code class="sourceCode python"><a class="sourceLine" id="cb3-1" data-line-number="1">UVWX <span class="op">=</span> Matrix([(u,v,w,x) <span class="cf">for</span> r <span class="kw">in</span> <span class="bu">range</span>(<span class="dv">4</span>)])</a>
+<a class="sourceLine" id="cb3-2" data-line-number="2">latex(UVWX)</a></code></pre></div>
+<p><span class="math display">\[
+\left[\begin{matrix}u &amp; v &amp; w &amp; x\\u &amp; v &amp; w &amp; x\\u &amp; v &amp; w &amp; x\\u &amp; v &amp; w &amp; x\end{matrix}\right]
+\]</span></p>
+<p>Now we’ll solve for <span class="math inline">\(\mathbf{A}_1\)</span> and <span class="math inline">\(\mathbf{A}_2\)</span>.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode python"><code class="sourceCode python"><a class="sourceLine" id="cb4-1" data-line-number="1"><span class="co"># Find the mapping taking the &quot;quadrilateral of reference&quot; and unit point to</span></a>
+<a class="sourceLine" id="cb4-2" data-line-number="2"><span class="co"># the five points in the perspective view volume selected above</span></a>
+<a class="sourceLine" id="cb4-3" data-line-number="3">A1 <span class="op">=</span> Matrix([eye_p, near_center, far_top_center, far_top_left]).reshape(<span class="dv">4</span>,<span class="dv">4</span>).T</a>
+<a class="sourceLine" id="cb4-4" data-line-number="4">A1 <span class="op">=</span> A1.multiply_elementwise(UVWX)</a>
+<a class="sourceLine" id="cb4-5" data-line-number="5"></a>
+<a class="sourceLine" id="cb4-6" data-line-number="6"></a>
+<a class="sourceLine" id="cb4-7" data-line-number="7"><span class="co"># Solve A1*unit = near_bottom_left for u, v, w, x</span></a>
+<a class="sourceLine" id="cb4-8" data-line-number="8">(u_sol, v_sol, x_sol, w_sol), <span class="op">=</span> linsolve(<span class="bu">list</span>(A1<span class="op">*</span>unit <span class="op">-</span> near_bottom_left),</a>
+<a class="sourceLine" id="cb4-9" data-line-number="9">                                         u, v, x, w)</a>
+<a class="sourceLine" id="cb4-10" data-line-number="10">A1 <span class="op">=</span> A1.subs({u: u_sol, v: v_sol, x: x_sol, w: w_sol})</a>
+<a class="sourceLine" id="cb4-11" data-line-number="11"></a>
+<a class="sourceLine" id="cb4-12" data-line-number="12"><span class="co"># Find the mapping taking the &quot;quadrilateral of reference&quot; and unit</span></a>
+<a class="sourceLine" id="cb4-13" data-line-number="13"><span class="co"># point to points on the standard view volume corresponding to the</span></a>
+<a class="sourceLine" id="cb4-14" data-line-number="14"><span class="co"># selected perspetive view volume points (eye point is taken to the &quot;ideal&quot;</span></a>
+<a class="sourceLine" id="cb4-15" data-line-number="15"><span class="co"># point)</span></a>
+<a class="sourceLine" id="cb4-16" data-line-number="16">A2 <span class="op">=</span> Matrix([ideal,</a>
+<a class="sourceLine" id="cb4-17" data-line-number="17">             n_near_center,</a>
+<a class="sourceLine" id="cb4-18" data-line-number="18">             n_far_top_center,</a>
+<a class="sourceLine" id="cb4-19" data-line-number="19">             n_far_top_left]).reshape(<span class="dv">4</span>, <span class="dv">4</span>).T</a>
+<a class="sourceLine" id="cb4-20" data-line-number="20">A2 <span class="op">=</span> A2.multiply_elementwise(UVWX)</a>
+<a class="sourceLine" id="cb4-21" data-line-number="21"></a>
+<a class="sourceLine" id="cb4-22" data-line-number="22"><span class="co"># Solve A2*unit = n_near_bottom_left for u,v,w,x</span></a>
+<a class="sourceLine" id="cb4-23" data-line-number="23">(u_sol, v_sol, x_sol, w_sol), <span class="op">=</span> linsolve(<span class="bu">list</span>(A2<span class="op">*</span>unit <span class="op">-</span> n_near_bottom_left),</a>
+<a class="sourceLine" id="cb4-24" data-line-number="24">                                         u, v, x, w)</a>
+<a class="sourceLine" id="cb4-25" data-line-number="25">A2 <span class="op">=</span> A2.subs({u: u_sol, v: v_sol, x: x_sol, w: w_sol})</a>
+<a class="sourceLine" id="cb4-26" data-line-number="26"></a>
+<a class="sourceLine" id="cb4-27" data-line-number="27"><span class="co"># Finally, find the matrix of the transformation taking the</span></a>
+<a class="sourceLine" id="cb4-28" data-line-number="28"><span class="co"># first set of points to the second</span></a>
+<a class="sourceLine" id="cb4-29" data-line-number="29">P <span class="op">=</span> A2 <span class="op">*</span> A1.inv()</a></code></pre></div>
+<p>Before displaying the resulting matrix <span class="math inline">\(\mathbf{P}\)</span>, I’ll do some simplifications to have Sympy display it in the familiar form</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode python"><code class="sourceCode python"><a class="sourceLine" id="cb5-1" data-line-number="1"><span class="co"># Make P_{3,2} = -1 by dividing the matrix by -P_{3,2}</span></a>
+<a class="sourceLine" id="cb5-2" data-line-number="2">c <span class="op">=</span> P[<span class="dv">3</span>, <span class="dv">2</span>]</a>
+<a class="sourceLine" id="cb5-3" data-line-number="3">P <span class="op">/=</span> <span class="op">-</span>c</a>
+<a class="sourceLine" id="cb5-4" data-line-number="4"><span class="co"># Simplify the matrix by putting expressions over a common</span></a>
+<a class="sourceLine" id="cb5-5" data-line-number="5"><span class="co"># denominator, canceling, and combining terms (more explicit/stable</span></a>
+<a class="sourceLine" id="cb5-6" data-line-number="6"><span class="co"># way to accomplish what sympy.simplify does)</span></a>
+<a class="sourceLine" id="cb5-7" data-line-number="7">P <span class="op">=</span> P.applyfunc(ratsimp)</a>
+<a class="sourceLine" id="cb5-8" data-line-number="8">P <span class="op">=</span> P.applyfunc(together)</a>
+<a class="sourceLine" id="cb5-9" data-line-number="9">latex(P)</a></code></pre></div>
+<p><span class="math display">\[
+\left[\begin{matrix}\frac{2 n}{- l + r} &amp; 0 &amp; \frac{l + r}{- l + r} &amp; 0\\0 &amp; \frac{2 n}{- b + t} &amp; \frac{b + t}{- b + t} &amp; 0\\0 &amp; 0 &amp; \frac{- f - n}{f - n} &amp; - \frac{2 f n}{f - n}\\0 &amp; 0 &amp; -1 &amp; 0\end{matrix}\right]
+\]</span></p>
+<p>Note that the first simplification step of dividing the matrix by <span class="math inline">\(c = -\mathbf{P}_{3,2}\)</span> does not change the transformation because <span class="math inline">\(\mathbf{P}\)</span> is the matrix of a homogeneous transformation (so all scalar multiples of the matrix are equivalent), and <span class="math inline">\(1/c\)</span> is defined because <span class="math inline">\(n\)</span> is nonzero:</p>
+<p><span class="math display">\[
+c = - \frac{1}{n}
+\]</span></p>
+<p>Finally, if the imaging rectangle is symmetric about the point <span class="math inline">\(\left(0, 0, -\frac{n}{f}, 1\right)\)</span> (so <span class="math inline">\(l = -r\)</span> and <span class="math inline">\(b = -t\)</span>), then the projection matrix simplifies to</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode python"><code class="sourceCode python"><a class="sourceLine" id="cb6-1" data-line-number="1">latex(P.subs({l: <span class="op">-</span>r, b:<span class="op">-</span>t}))</a></code></pre></div>
+<p><span class="math display">\[
+\left[\begin{matrix}\frac{n}{r} &amp; 0 &amp; 0 &amp; 0\\0 &amp; \frac{n}{t} &amp; 0 &amp; 0\\0 &amp; 0 &amp; \frac{- f - n}{f - n} &amp; - \frac{2 f n}{f - n}\\0 &amp; 0 &amp; -1 &amp; 0\end{matrix}\right]
+\]</span></p>
+<h2 id="the-parallel-projection-matrix">The Parallel Projection Matrix</h2>
+<p>To derive the general parallel projection matrix, we’ll follow the same approach as above, just mapping a different view volume to the standard parallel view volume. Given the imaging rectangle on the near plane defined by <span class="math inline">\(z=-n, \; l \leq x \leq r, \; b \leq y \leq t\)</span>, and a vector <span class="math inline">\(\mathbf{d}\)</span> giving the direction of projection (the “DOP” in Figure <a href="#dppfig3">3</a>), the eye space view volume is fully defined.</p>
+<p><a id="dppfig3"></a></p>
+<figure>
+<img src="/img/projparallel.gif" title="Parallel projection&lt;sup&gt;4&lt;/sup&gt;" alt="Figure 3: Parallel projection [4]" /><figcaption>Figure 3: Parallel projection [<a href="#dppref4">4</a>]</figcaption>
+</figure>
+<div class="sourceCode" id="cb7"><pre class="sourceCode python"><code class="sourceCode python"><a class="sourceLine" id="cb7-1" data-line-number="1"><span class="im">import</span> itertools</a>
+<a class="sourceLine" id="cb7-2" data-line-number="2"></a>
+<a class="sourceLine" id="cb7-3" data-line-number="3">d1, d2, d3 <span class="op">=</span> symbols(<span class="st">&#39;d_1:4&#39;</span>)</a>
+<a class="sourceLine" id="cb7-4" data-line-number="4">d <span class="op">=</span> Matrix([d1, d2, d3, <span class="dv">0</span>])</a>
+<a class="sourceLine" id="cb7-5" data-line-number="5"></a>
+<a class="sourceLine" id="cb7-6" data-line-number="6"><span class="co"># Points on the parallel view volume in eye space, no four of which are</span></a>
+<a class="sourceLine" id="cb7-7" data-line-number="7"><span class="co"># linearly dependent</span></a>
+<a class="sourceLine" id="cb7-8" data-line-number="8">near_top_left <span class="op">=</span> Matrix([l, t, <span class="op">-</span>n, <span class="dv">1</span>])</a>
+<a class="sourceLine" id="cb7-9" data-line-number="9">near_bottom_left <span class="op">=</span> Matrix([l, b, <span class="op">-</span>n, <span class="dv">1</span>])</a>
+<a class="sourceLine" id="cb7-10" data-line-number="10">near_top_right <span class="op">=</span> Matrix([r, t, <span class="op">-</span>n, <span class="dv">1</span>])</a>
+<a class="sourceLine" id="cb7-11" data-line-number="11"><span class="co"># d is a unit vector in direction of near plane from far plane</span></a>
+<a class="sourceLine" id="cb7-12" data-line-number="12"><span class="co"># =&gt; &lt;point on near plane&gt; - d * (f-n)/d3 is corresponding point on far plane</span></a>
+<a class="sourceLine" id="cb7-13" data-line-number="13">far_top_left <span class="op">=</span> near_top_left <span class="op">+</span> <span class="op">-</span>d <span class="op">*</span> ((f<span class="op">-</span>n)<span class="op">/</span>d3)</a>
+<a class="sourceLine" id="cb7-14" data-line-number="14">far_bottom_right <span class="op">=</span> Matrix([r, b, <span class="op">-</span>n, <span class="dv">1</span>]) <span class="op">+</span> <span class="op">-</span>d <span class="op">*</span> ((f<span class="op">-</span>n)<span class="op">/</span>d3)</a>
+<a class="sourceLine" id="cb7-15" data-line-number="15"></a>
+<a class="sourceLine" id="cb7-16" data-line-number="16"><span class="co"># Just double checking that no four of the 5 points are linearly</span></a>
+<a class="sourceLine" id="cb7-17" data-line-number="17"><span class="co"># dependent, in general</span></a>
+<a class="sourceLine" id="cb7-18" data-line-number="18"><span class="cf">assert</span> <span class="bu">all</span>([Matrix(s).reshape(<span class="dv">4</span>,<span class="dv">4</span>).rank() <span class="op">==</span> <span class="dv">4</span></a>
+<a class="sourceLine" id="cb7-19" data-line-number="19">            <span class="cf">for</span> s <span class="kw">in</span> itertools.combinations([</a>
+<a class="sourceLine" id="cb7-20" data-line-number="20">                    near_top_left,</a>
+<a class="sourceLine" id="cb7-21" data-line-number="21">                    near_bottom_left,</a>
+<a class="sourceLine" id="cb7-22" data-line-number="22">                    near_top_right,</a>
+<a class="sourceLine" id="cb7-23" data-line-number="23">                    far_top_left,</a>
+<a class="sourceLine" id="cb7-24" data-line-number="24">                    far_bottom_right], <span class="dv">4</span>)])</a>
+<a class="sourceLine" id="cb7-25" data-line-number="25"></a>
+<a class="sourceLine" id="cb7-26" data-line-number="26"><span class="co"># Points to which the above are mapped on the</span></a>
+<a class="sourceLine" id="cb7-27" data-line-number="27"><span class="co"># normalized parallel view volume</span></a>
+<a class="sourceLine" id="cb7-28" data-line-number="28">n_near_top_left <span class="op">=</span> Matrix([<span class="op">-</span><span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">-1</span>, <span class="dv">1</span>])</a>
+<a class="sourceLine" id="cb7-29" data-line-number="29">n_near_bottom_left <span class="op">=</span> Matrix([<span class="op">-</span><span class="dv">1</span>, <span class="dv">-1</span>, <span class="dv">-1</span>, <span class="dv">1</span>])</a>
+<a class="sourceLine" id="cb7-30" data-line-number="30">n_near_top_right <span class="op">=</span> Matrix([<span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">-1</span>, <span class="dv">1</span>])</a>
+<a class="sourceLine" id="cb7-31" data-line-number="31">n_far_top_left <span class="op">=</span> Matrix([<span class="op">-</span><span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>])</a>
+<a class="sourceLine" id="cb7-32" data-line-number="32">n_far_bottom_right <span class="op">=</span> Matrix([<span class="dv">1</span>, <span class="dv">-1</span>, <span class="dv">1</span>, <span class="dv">1</span>])</a>
+<a class="sourceLine" id="cb7-33" data-line-number="33"></a>
+<a class="sourceLine" id="cb7-34" data-line-number="34"><span class="co"># Find the mapping taking the &quot;quadrilateral of reference&quot; and unit point to</span></a>
+<a class="sourceLine" id="cb7-35" data-line-number="35"><span class="co"># the five points in the parallel view volume selected above</span></a>
+<a class="sourceLine" id="cb7-36" data-line-number="36">A1 <span class="op">=</span> Matrix([near_top_left,</a>
+<a class="sourceLine" id="cb7-37" data-line-number="37">             near_bottom_left,</a>
+<a class="sourceLine" id="cb7-38" data-line-number="38">             near_top_right,</a>
+<a class="sourceLine" id="cb7-39" data-line-number="39">             far_top_left]).reshape(<span class="dv">4</span>,<span class="dv">4</span>).T</a>
+<a class="sourceLine" id="cb7-40" data-line-number="40">A1 <span class="op">=</span> A1.multiply_elementwise(UVWX)</a>
+<a class="sourceLine" id="cb7-41" data-line-number="41"></a>
+<a class="sourceLine" id="cb7-42" data-line-number="42"><span class="co"># Solve A1*unit = far_bottom_right for u, v, w, x</span></a>
+<a class="sourceLine" id="cb7-43" data-line-number="43">(u_sol, v_sol, x_sol, w_sol), <span class="op">=</span> linsolve(<span class="bu">list</span>(A1<span class="op">*</span>unit <span class="op">-</span> far_bottom_right),</a>
+<a class="sourceLine" id="cb7-44" data-line-number="44">                                         u, v, x, w)</a>
+<a class="sourceLine" id="cb7-45" data-line-number="45">A1 <span class="op">=</span> A1.subs({u: u_sol, v: v_sol, x: x_sol, w: w_sol})</a>
+<a class="sourceLine" id="cb7-46" data-line-number="46"></a>
+<a class="sourceLine" id="cb7-47" data-line-number="47"><span class="co"># Find the mapping taking the &quot;quadrilateral of reference&quot; and unit point to</span></a>
+<a class="sourceLine" id="cb7-48" data-line-number="48"><span class="co"># points on the standard view volume</span></a>
+<a class="sourceLine" id="cb7-49" data-line-number="49">A2 <span class="op">=</span> Matrix([n_near_top_left,</a>
+<a class="sourceLine" id="cb7-50" data-line-number="50">             n_near_bottom_left,</a>
+<a class="sourceLine" id="cb7-51" data-line-number="51">             n_near_top_right,</a>
+<a class="sourceLine" id="cb7-52" data-line-number="52">             n_far_top_left]).reshape(<span class="dv">4</span>,<span class="dv">4</span>).T</a>
+<a class="sourceLine" id="cb7-53" data-line-number="53">A2 <span class="op">=</span> A2.multiply_elementwise(UVWX)</a>
+<a class="sourceLine" id="cb7-54" data-line-number="54"></a>
+<a class="sourceLine" id="cb7-55" data-line-number="55"><span class="co"># Solve A2*unit = n_far_bottom_left for u,v,w,x</span></a>
+<a class="sourceLine" id="cb7-56" data-line-number="56">(u_sol, v_sol, x_sol, w_sol), <span class="op">=</span> linsolve(<span class="bu">list</span>(A2<span class="op">*</span>unit <span class="op">-</span> n_far_bottom_right),</a>
+<a class="sourceLine" id="cb7-57" data-line-number="57">                                         u, v, x, w)</a>
+<a class="sourceLine" id="cb7-58" data-line-number="58">A2 <span class="op">=</span> A2.subs({u: u_sol, v: v_sol, x: x_sol, w: w_sol})</a>
+<a class="sourceLine" id="cb7-59" data-line-number="59"></a>
+<a class="sourceLine" id="cb7-60" data-line-number="60"><span class="co"># Finally, find the matrix of the transformation taking the</span></a>
+<a class="sourceLine" id="cb7-61" data-line-number="61"><span class="co"># first set of points to the second</span></a>
+<a class="sourceLine" id="cb7-62" data-line-number="62">P <span class="op">=</span> A2 <span class="op">*</span> A1.inv()</a>
+<a class="sourceLine" id="cb7-63" data-line-number="63">P <span class="op">=</span> P.applyfunc(ratsimp)</a>
+<a class="sourceLine" id="cb7-64" data-line-number="64">P <span class="op">=</span> P.applyfunc(together)</a>
+<a class="sourceLine" id="cb7-65" data-line-number="65">latex(P)</a></code></pre></div>
+<p><span class="math display">\[
+\left[\begin{matrix}\frac{2}{- l + r} &amp; 0 &amp; - \frac{2 d_{1}}{d_{3} \left(- l + r\right)} &amp; \frac{1}{d_{3} \left(- l + r\right)} \left(- 2 d_{1} n - 2 d_{3} l - d_{3} \left(- l + r\right)\right)\\0 &amp; \frac{2}{- b + t} &amp; - \frac{2 d_{2}}{d_{3} \left(- b + t\right)} &amp; \frac{1}{d_{3} \left(- b + t\right)} \left(- 2 b d_{3} - 2 d_{2} n - d_{3} \left(- b + t\right)\right)\\0 &amp; 0 &amp; - \frac{2}{f - n} &amp; \frac{- f - n}{f - n}\\0 &amp; 0 &amp; 0 &amp; 1\end{matrix}\right]
+\]</span></p>
+<p>In the case where <span class="math inline">\(\mathbf{d}\)</span> is perpendicular to the image plane <span class="math inline">\(d_1 = d_2 = 0, \; d_3 = 1\)</span> we get the familiar <code>glOrtho</code> matrix:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode python"><code class="sourceCode python"><a class="sourceLine" id="cb8-1" data-line-number="1">latex(P.subs({d1: <span class="dv">0</span>, d2: <span class="dv">0</span>, d3: <span class="dv">1</span>}))</a></code></pre></div>
+<p><span class="math display">\[
+\left[\begin{matrix}\frac{2}{- l + r} &amp; 0 &amp; 0 &amp; \frac{- l - r}{- l + r}\\0 &amp; \frac{2}{- b + t} &amp; 0 &amp; \frac{- b - t}{- b + t}\\0 &amp; 0 &amp; - \frac{2}{f - n} &amp; \frac{- f - n}{f - n}\\0 &amp; 0 &amp; 0 &amp; 1\end{matrix}\right]
+\]</span></p>
+<p>By using different direction vectors, we can get projection matrices with different angles of projection.</p>
+<ol type="1">
+<li><p><a id="dppref1"></a> Tokoi, Hoke, <em>Frustum</em>, <a href="https://tokoik.github.io/opengl/faq.html" class="uri">https://tokoik.github.io/opengl/faq.html</a></p></li>
+<li><p><a id="dppref2"></a> Ahn, Song Ho, <em>Perspective Frustum and Normalized Device Coordinates (NDC)</em>, <a href="http://www.songho.ca/opengl/gl_projectionmatrix.html" class="uri">http://www.songho.ca/opengl/gl_projectionmatrix.html</a></p></li>
+<li><p><a id="dppref3"></a> Brannan, D.A.; Esplen, M.F. and Gray, J.J., <em>Geometry</em>, (2011).</p></li>
+<li><p><a id="dppref4"></a> Rhodes, Loren, <em>Parallel Projection</em>, <a href="http://jcsites.juniata.edu/faculty/rhodes/graphics/viewing.htm" class="uri">http://jcsites.juniata.edu/faculty/rhodes/graphics/viewing.htm</a></p></li>
+</ol>
+
+    </div><!-- /.entry-content -->
+
+    <section class="comments">
+      <h2>Comments</h2>
+      <div id="disqus_thread"></div>
+      <script type="text/javascript">
+        var disqus_identifier = "posts/2018/05/deriving-perspective-and-parallel-projection-matrices/";
+        var disqus_url = "https://dbarbs.net/posts/2018/05/deriving-perspective-and-parallel-projection-matrices/";
+        (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'https://dbarbs.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+        })();
+      </script>
+    </section> <!-- /.comments -->
+  </article>
+    </section><!-- /#content -->
+<aside id="sidebar">
+    <section>
+    <h1>Social</h1>
+      <ul id="social">
+        <li><a href="https://www.facebook.com/andrew.barbarello"><i
+                                                            class="fa fa-facebook-square fa-lg"></i>facebook</a></li>
+        <li><a href="https://twitter.com/_dbarbs"><i
+                                                            class="fa fa-twitter-square fa-lg"></i>twitter</a></li>
+      </ul>
+    </section>
+
+    <section><h1>Recent Posts</h1>
+      <ul id="recentposts">
+        <li>
+          <a href="https://dbarbs.net/posts/2018/05/deriving-perspective-and-parallel-projection-matrices/">Deriving Perspective and Parallel Projection Matrices</a>
+        </li>
+        <li>
+          <a href="https://dbarbs.net/posts/2017/01/grokking-bezier-curves/">Grokking Bézier Curves</a>
+        </li>
+        <li>
+          <a href="https://dbarbs.net/posts/2014/07/unqualified-failure/">Unqualified failure</a>
+        </li>
+        <li>
+          <a href="https://dbarbs.net/posts/2014/02/installing-clover-os-x-and-linux-mint/">Installing Clover, OS X, and Linux Mint</a>
+        </li>
+        <li>
+          <a href="https://dbarbs.net/posts/2014/02/understanding-the-css-box-model-and-floats/">Understanding the CSS box model and floats</a>
+        </li>
+      </ul>
+    </section>
+
+
+
+    <section>
+      <h1>GitHub Repos</h1>
+        <div id="gh_repos">
+            <p class="loading-status">Status updating...</p>
+        </div>
+    </section>
+</aside>    </div>
+    <footer id="contentinfo" class="body">
+      <address id="about" class="vcard body">
+        Proudly powered by <a href="http://getpelican.com/">Pelican</a>,
+        which takes great advantage of <a href="http://python.org">Python</a>.
+      </address><!-- /#about -->
+    </footer><!-- /#contentinfo -->
+    <script src="https://dbarbs.net/theme/js/github.js" type="text/javascript"></script>
+    <script>
+            github.showRepos({
+                user: 'drewbarbs',
+                count: 5,
+                skip_forks: true,
+                target: 'gh_repos' //id of the target div
+            });
+    </script>
+    
+    <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-34028465-1']);
+    _gaq.push(['_trackPageview']);
+    (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+    </script>
+  </body>
+</html>
