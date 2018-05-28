@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+<meta name="keywords" content="webdev" />
+    <title>Drew Barbarello's Blog</title>
+    <link rel="stylesheet" href="https://dbarbs.net/theme/css/main.css" />
+    <link href="https://dbarbs.net/theme/css/font-awesome.min.css" rel="stylesheet"/>
+    <link href="https://dbarbs.net/theme/css/skylighting.css" rel="stylesheet">
+    <script type="text/javascript" async
+            src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.2/MathJax.js?config=TeX-MML-AM_CHTML">
+    </script>
+    <link rel="icon" type="image/gif" href="/favicon.gif"/>
+
+    <link href="https://dbarbs.net/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="Drew Barbarello's Blog Atom Feed" />
+
+        
+<style>
+.example {
+    margin-bottom: 50px;
+    width:100%;
+    float: left;
+    border: 1px dashed orange;
+}
+.example div {
+    width:20%;
+    min-width: 100px;
+    border: 5px solid black;
+    float:left;
+}
+.fst {
+    margin: 5px 0 0 5px;
+    background-color: red;
+}
+.snd {
+    background-color: blue;
+}
+.example div.thd {
+    min-width: 200px;
+    background-color: green;
+    float:none;
+    border: 5px solid purple;
+}
+#first_ex div.thd {
+    width: 50%;
+}
+</style>
+
+
+  </head>
+
+  <body id="index" class="home">
+    <header id="banner" class="body">
+      <h1><a href="https://dbarbs.net">Drew Barbarello's Blog <strong></strong></a></h1>
+      <nav id="menu"><ul>
+          <li><a href="https://dbarbs.net/">Home</a></li>
+            <li><a href="https://dbarbs.net/pages/about.html">About</a></li>
+          <li><a href="https://dbarbs.net/archives.html">Archive</a></li>
+      </ul></nav><!-- /#menu -->
+
+    </header><!-- /#banner -->
+    <div id="wrap">
+
+    <input type="checkbox" id="width_sidebar">
+    <label for="width_sidebar"><span>hide the sidebar</span></label>
+
+    <section id="content">
+  <article class="hentry">
+    <header>
+      <h1 class="entry-title">
+        Understanding the CSS box model and floats
+      </h1>
+      <time class="published" datetime="2014-02-07T00:00:00-05:00">Fri, 07 February 2014</time>
+      
+    </header>
+    <div class="entry-content">
+      
+<p>I went with the standard two-column layout for this site: content and sidebar. I wanted the columns to have “fluid width”, equal height, and different background colors, so I referenced <a href="http://css-tricks.com/fluid-width-equal-height-columns/">this article</a> and used the &quot; <a href="http://nicolasgallagher.com/multiple-backgrounds-and-borders-with-css2/demo/backgrounds.html#faux">Nicholas Gallagher method</a>&quot; to implement it.</p>
+<p>I recommend checking out the Gallagher method <a href="http://css-tricks.com/fluid-width-equal-height-columns/">example</a> at CSS-tricks with the browser’s element inspector to see what’s going on there, as it demonstrates the use of CSS pseudo-elements, the <code>overflow: hidden</code> “<a href="http://colinaarts.com/articles/the-magic-of-overflow-hidden/">trick</a>” (to create a Block Formatting Context), and how floats and absolutely/relatively-positioned elements are laid out.</p>
+<p>Here are some examples that I came up with to try and come to grips with how floats are laid out:</p>
+<p>Given this CSS:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode css"><code class="sourceCode css"><a class="sourceLine" id="cb1-1" data-line-number="1"><span class="fu">.example</span> {</a>
+<a class="sourceLine" id="cb1-2" data-line-number="2">    <span class="kw">margin-bottom</span>: <span class="dv">50px</span>;</a>
+<a class="sourceLine" id="cb1-3" data-line-number="3">    <span class="kw">width</span>:<span class="dv">100%</span>;</a>
+<a class="sourceLine" id="cb1-4" data-line-number="4">    <span class="kw">float</span>: <span class="dv">left</span>;</a>
+<a class="sourceLine" id="cb1-5" data-line-number="5">    <span class="kw">border</span>: <span class="dv">1px</span> <span class="dv">dashed</span> orange;</a>
+<a class="sourceLine" id="cb1-6" data-line-number="6">}</a>
+<a class="sourceLine" id="cb1-7" data-line-number="7"><span class="fu">.example</span> div {</a>
+<a class="sourceLine" id="cb1-8" data-line-number="8">    <span class="kw">width</span>:<span class="dv">20%</span>;</a>
+<a class="sourceLine" id="cb1-9" data-line-number="9">    <span class="kw">border</span>: <span class="dv">5px</span> <span class="dv">solid</span> <span class="dv">black</span>;</a>
+<a class="sourceLine" id="cb1-10" data-line-number="10">    <span class="kw">float</span>:<span class="dv">left</span>;</a>
+<a class="sourceLine" id="cb1-11" data-line-number="11">}</a>
+<a class="sourceLine" id="cb1-12" data-line-number="12"><span class="fu">.fst</span> {</a>
+<a class="sourceLine" id="cb1-13" data-line-number="13">    <span class="kw">margin</span>: <span class="dv">5px</span> <span class="dv">0</span> <span class="dv">0</span> <span class="dv">5px</span>;</a>
+<a class="sourceLine" id="cb1-14" data-line-number="14">    <span class="kw">background-color</span>: <span class="dv">red</span>;</a>
+<a class="sourceLine" id="cb1-15" data-line-number="15">}</a>
+<a class="sourceLine" id="cb1-16" data-line-number="16"><span class="fu">.snd</span> {</a>
+<a class="sourceLine" id="cb1-17" data-line-number="17">    <span class="kw">background-color</span>: <span class="dv">blue</span>;</a>
+<a class="sourceLine" id="cb1-18" data-line-number="18">}</a>
+<a class="sourceLine" id="cb1-19" data-line-number="19"><span class="fu">.example</span> div<span class="fu">.thd</span> {</a>
+<a class="sourceLine" id="cb1-20" data-line-number="20">    <span class="kw">background-color</span>: <span class="dv">green</span>;</a>
+<a class="sourceLine" id="cb1-21" data-line-number="21">    <span class="kw">float</span>:<span class="dv">none</span>;</a>
+<a class="sourceLine" id="cb1-22" data-line-number="22">    <span class="kw">border</span>: <span class="dv">5px</span> <span class="dv">solid</span> <span class="dv">purple</span>;</a>
+<a class="sourceLine" id="cb1-23" data-line-number="23">}</a>
+<a class="sourceLine" id="cb1-24" data-line-number="24"><span class="pp">#first_ex</span> div<span class="fu">.thd</span> {</a>
+<a class="sourceLine" id="cb1-25" data-line-number="25">    <span class="kw">width</span>: <span class="dv">50%</span>;</a>
+<a class="sourceLine" id="cb1-26" data-line-number="26">}</a></code></pre></div>
+<p>And this HTML:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode html"><code class="sourceCode html"><a class="sourceLine" id="cb2-1" data-line-number="1"><span class="kw">&lt;div</span><span class="ot"> id=</span><span class="st">&quot;first_ex&quot;</span><span class="ot"> class=</span><span class="st">&quot;example&quot;</span><span class="kw">&gt;</span></a>
+<a class="sourceLine" id="cb2-2" data-line-number="2">    <span class="kw">&lt;div</span><span class="ot"> class=</span><span class="st">&quot;fst&quot;</span><span class="kw">&gt;</span>First div<span class="kw">&lt;/div&gt;</span></a>
+<a class="sourceLine" id="cb2-3" data-line-number="3">    <span class="kw">&lt;div</span><span class="ot"> class=</span><span class="st">&quot;snd&quot;</span><span class="kw">&gt;</span>Second div<span class="kw">&lt;/div&gt;</span></a>
+<a class="sourceLine" id="cb2-4" data-line-number="4">    <span class="kw">&lt;div</span><span class="ot"> class=</span><span class="st">&quot;thd&quot;</span><span class="kw">&gt;</span>This is a third div with some content in here</a>
+<a class="sourceLine" id="cb2-5" data-line-number="5">    that might wrap around. Still more content. Again more content.<span class="kw">&lt;/div&gt;</span></a>
+<a class="sourceLine" id="cb2-6" data-line-number="6"><span class="kw">&lt;/div&gt;</span></a></code></pre></div>
+We get:
+<div id="first_ex" class="example">
+<div class="fst">
+First div
+</div>
+<div class="snd">
+Second div
+</div>
+<div class="thd">
+This is a third div with some content in here that might wrap around. Still more content. Again more content.
+</div>
+</div>
+<p>The first and second divs (<code>.fst</code> and <code>.snd</code>) are floating, and placed next to each other on the same line. The third div (<code>.thd</code>) is <em>not</em> floating, and participates in layout as though the other divs weren’t there: the outer top and left edges of the third div’s margin box are touching the top-left corner of the content box of the containing element (the <code>.example</code> div). Note that the border of <code>.thd</code> is visible in the upper-left corner of the container because <code>.fst</code> is offset.</p>
+<p>Because the first/second divs are floating, and because the first words of <code>.thd</code>’s content are able to fit alongside them, the first line-box of <code>.thd</code> begins horizontally adjacent to those two, and the content continues below them. According to the <a href="https://www.w3.org/TR/css3-box/">CSS box model spec</a>, the third div’s content must lie outside the margins of the first/second div.</p>
+<p>In contrast, if the third div’s content area is too narrow to accommodate width of the adjacent floats, then the first line-box of <code>.thd</code> will be shifted down below them.</p>
+<div id="second_ex" class="example">
+<div class="fst">
+First div
+</div>
+<div class="snd">
+Second div
+</div>
+<div class="thd">
+<p>
+This is a third div with some content in here that might wrap around. Still more content. Again more content.
+</p>
+</div>
+</div>
+<p>The relevant quote from the spec is:</p>
+<blockquote>
+[L]ine boxes created next to the float are shortened to make room for the margin box of the float. If a shortened line box is too small to contain any further content, then it is shifted downward until either it fits or there are no more floats present.
+<footer>
+<cite title="CSS basic box model">CSS basic box model</cite> specification
+</footer>
+</blockquote>
+<p>Check out this <a href="http://jsfiddle.net/drewbarbs/kUV9j/5/">fiddle</a> if you would like to play around with the examples.</p>
+
+    </div><!-- /.entry-content -->
+
+    <section class="comments">
+      <h2>Comments</h2>
+      <div id="disqus_thread"></div>
+      <script type="text/javascript">
+        var disqus_identifier = "posts/2014/02/understanding-the-css-box-model-and-floats/";
+        var disqus_url = "https://dbarbs.net/posts/2014/02/understanding-the-css-box-model-and-floats/";
+        (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'http://dbarbs.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+        })();
+      </script>
+    </section> <!-- /.comments -->
+  </article>
+    </section><!-- /#content -->
+<aside id="sidebar">
+    <section>
+    <h1>Social</h1>
+      <ul id="social">
+        <li><a href="https://www.facebook.com/andrew.barbarello"><i
+                                                            class="fa fa-facebook-square fa-lg"></i>facebook</a></li>
+        <li><a href="https://twitter.com/_dbarbs"><i
+                                                            class="fa fa-twitter-square fa-lg"></i>twitter</a></li>
+      </ul>
+    </section>
+
+    <section><h1>Recent Posts</h1>
+      <ul id="recentposts">
+        <li>
+          <a href="https://dbarbs.net/posts/2017/01/grokking-bezier-curves/">Grokking Bézier Curves</a>
+        </li>
+        <li>
+          <a href="https://dbarbs.net/posts/2014/07/unqualified-failure/">Unqualified failure</a>
+        </li>
+        <li>
+          <a href="https://dbarbs.net/posts/2014/02/installing-clover-os-x-and-linux-mint/">Installing Clover, OS X, and Linux Mint</a>
+        </li>
+        <li>
+          <a href="https://dbarbs.net/posts/2014/02/understanding-the-css-box-model-and-floats/">Understanding the CSS box model and floats</a>
+        </li>
+        <li>
+          <a href="https://dbarbs.net/posts/2014/02/obligatory-new-blog-post/">Obligatory New Blog Post</a>
+        </li>
+      </ul>
+    </section>
+
+
+
+    <section>
+      <h1>GitHub Repos</h1>
+        <div id="gh_repos">
+            <p class="loading-status">Status updating...</p>
+        </div>
+    </section>
+</aside>    </div>
+    <footer id="contentinfo" class="body">
+      <address id="about" class="vcard body">
+        Proudly powered by <a href="http://getpelican.com/">Pelican</a>,
+        which takes great advantage of <a href="http://python.org">Python</a>.
+      </address><!-- /#about -->
+    </footer><!-- /#contentinfo -->
+    <script src="https://dbarbs.net/theme/js/github.js" type="text/javascript"></script>
+    <script>
+            github.showRepos({
+                user: 'drewbarbs',
+                count: 5,
+                skip_forks: true,
+                target: 'gh_repos' //id of the target div
+            });
+    </script>
+    
+    <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-34028465-1']);
+    _gaq.push(['_trackPageview']);
+    (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+    </script>
+  </body>
+</html>

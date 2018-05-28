@@ -1,0 +1,723 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>Drew Barbarello's Blog</title><link href="https://dbarbs.net/" rel="alternate"></link><link href="https://dbarbs.net/feeds/all.atom.xml" rel="self"></link><id>https://dbarbs.net/</id><updated>2017-01-29T00:00:00-05:00</updated><entry><title>Grokking Bézier Curves</title><link href="https://dbarbs.net/posts/2017/01/grokking-bezier-curves/" rel="alternate"></link><published>2017-01-29T00:00:00-05:00</published><updated>2017-01-29T00:00:00-05:00</updated><author><name>Andrew Barbarello</name></author><id>tag:dbarbs.net,2017-01-29:/posts/2017/01/grokking-bezier-curves/</id><summary type="html">&lt;p&gt;Yet another visualization of Bézier curves using De Casteljau's algorithm.&lt;/p&gt;</summary><content type="html">
+&lt;p&gt;The recursive (De Casteljau) definition of Bézier curves can be used to build an intuition for how the curve is computed from its control points. It is easier for me to wrap my head around than the &lt;a href="https://en.wikipedia.org/wiki/B%C3%A9zier_curve#Explicit_definition"&gt;explicit definition&lt;/a&gt; of the curve as a linear combination of points weighted by Bernstein polynomials. For proof that the definitions are equivalent, see &lt;a href="http://www.cs.mtu.edu/~shene/COURSES/cs3621/NOTES/spline/Bezier/de-casteljau-correct.html"&gt;this&lt;/a&gt; analysis of the de Casteljau algorithm.&lt;/p&gt;
+&lt;p&gt;There are plenty of materials on Bézier curves online, e.g. see &lt;a href="https://www.youtube.com/watch?v=YATikPP2q70"&gt;this&lt;/a&gt; YouTube video and &lt;a href="https://pomax.github.io/bezierinfo/"&gt;this&lt;/a&gt; awesome online book/Javascript library on the subject. To help me internalize the concept, I put together a few interactive visualizations of my own.&lt;/p&gt;
+&lt;p&gt;The following shows how the point &lt;span class="math inline"&gt;\(B_{\mathbf{P}_0\mathbf{P}_1\ldots\mathbf{P}_{n}}(t)\)&lt;/span&gt; on a degree &lt;span class="math inline"&gt;\(n\)&lt;/span&gt; curve is computed by recursion on &lt;span class="math inline"&gt;\(n\)&lt;/span&gt;: we compute the result as the point &lt;span class="math inline"&gt;\(B_{\mathbf{P}^1_0\mathbf{P}^1_1\ldots\mathbf{P}^1_{n}}(t)\)&lt;/span&gt; on a degree &lt;span class="math inline"&gt;\(n-1\)&lt;/span&gt; curve where &lt;span class="math inline"&gt;\(\mathbf{P}^1_i = (1-t)\mathbf{P}_i+t\mathbf{P}_{i+1}\)&lt;/span&gt;. The base case is when we have a degree 0 curve &lt;span class="math inline"&gt;\(B_{\mathbf{P}^n_0}\)&lt;/span&gt; with one control point; then &lt;span class="math inline"&gt;\(\mathbf{P}^n_0 = B_{\mathbf{P}_0\mathbf{P}_1\ldots\mathbf{P}_{n}}(t)\)&lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;Click the “Iterations” slider and use the Left and Right arrow keys to see how successive control points are computed by linear interpolation, ultimately computing the point &lt;span class="math inline"&gt;\(P\)&lt;/span&gt; on the curve. Slide &lt;span class="math inline"&gt;\(t\)&lt;/span&gt; between 0 and 1 to see how the curve is traced out.&lt;/p&gt;
+&lt;div class="bez-demo clearfix"&gt;
+&lt;canvas id="viewport" width="400" height="400"&gt;
+&lt;/canvas&gt;
+&lt;div class="plot-controls"&gt;
+&lt;label for="degree"&gt;Degree&lt;/label&gt; &lt;input type="range" id="degree" min="1" max="3" step="1"&gt; &lt;span id="degree-output" data-aria-relevant="all"&gt;&lt;/span&gt; &lt;br/&gt; &lt;label for="bez-t"&gt;&lt;span class="math inline"&gt;\(t\)&lt;/span&gt;&lt;/label&gt; &lt;input type="range" id="bez-t" min="0" max="1" step="0.0125"&gt; &lt;span id="bez-t-output" data-aria-relevant="all"&gt;&lt;/span&gt; &lt;br/&gt; &lt;label for="iterations"&gt;Iterations&lt;/label&gt; &lt;input type="range" id="iterations"&gt; &lt;span id="iterations-output" data-aria-live="polite"&gt;&lt;/span&gt; &lt;datalist id="iterations-choices" aria-relevant="all"&gt; &lt;/datalist&gt; &lt;br/&gt;
+&lt;fieldset&gt;
+&lt;legend style="float:left; margin-right: 1em;"&gt;Curve&lt;/legend&gt; &lt;input type="radio" name="curve-mode" id="curve-mode-complete" value="complete" checked /&gt; &lt;label for="curve-mode-complete"&gt;Complete&lt;/label&gt; &lt;input type="radio" name="curve-mode" id="curve-mode-partial" value="partial" /&gt; &lt;label for="curve-mode-partial"&gt;&lt;span&gt;&lt;span class="math inline"&gt;\([0, t]\)&lt;/span&gt;&lt;/span&gt;&lt;/label&gt; &lt;input type="radio" name="curve-mode" id="curve-mode-none" value="none" /&gt; &lt;label for="curve-mode-none"&gt;None&lt;/label&gt;
+&lt;/fieldset&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;p&gt;Next is a visualization of Bézier &lt;a href="https://www.cs.mtu.edu/~shene/COURSES/cs3621/NOTES/spline/Bezier/bezier-sub.html"&gt;subdivision&lt;/a&gt;. The “child” curve &lt;span class="math inline"&gt;\(B&amp;#39;(t&amp;#39;)\)&lt;/span&gt; is itself a Bézier curve of the same degree as the parent &lt;span class="math inline"&gt;\(B(t)\)&lt;/span&gt; and is a subset: as &lt;span class="math inline"&gt;\(t&amp;#39;\)&lt;/span&gt; varies from &lt;span class="math inline"&gt;\([0, 1]\)&lt;/span&gt;, it traces out the parent curve &lt;span class="math inline"&gt;\(B(x)\)&lt;/span&gt; for &lt;span class="math inline"&gt;\(x\in [0, t]\)&lt;/span&gt;. That is, &lt;span class="math inline"&gt;\(B&amp;#39;(t&amp;#39;) = B(t&amp;#39;\cdot t)\)&lt;/span&gt;. As it turns out, the control points for this child curve are computed in each recursive step of the De Casteljau algorithm: they are &lt;span class="math inline"&gt;\(\{P^i_0\}_{i=0}^n\)&lt;/span&gt;. See &lt;a href="https://www.cs.mtu.edu/~shene/COURSES/cs3621/NOTES/spline/Bezier/b-sub-correct.html"&gt;here&lt;/a&gt; for a proof of correctness.&lt;/p&gt;
+&lt;div class="bez-demo clearfix"&gt;
+&lt;canvas id="viewport-subdiv" width="400" height="400"&gt;
+&lt;/canvas&gt;
+&lt;div class="plot-controls"&gt;
+&lt;strong&gt;Parent&lt;/strong&gt; &lt;br /&gt; &lt;label for="degree-parent"&gt;Degree&lt;/label&gt; &lt;input type="range" id="degree-parent" min="2" max="3" step="1"&gt; &lt;span id="degree-output-parent" data-aria-relevant="all"&gt;&lt;/span&gt; &lt;br/&gt; &lt;label for="bez-t-parent"&gt;&lt;span class="math inline"&gt;\(t\)&lt;/span&gt;&lt;/label&gt; &lt;input type="range" id="bez-t-parent" min="0" max="1" step="0.0125"&gt; &lt;span id="bez-t-output-parent" data-aria-relevant="all"&gt;&lt;/span&gt; &lt;br/&gt; &lt;label for="iterations-parent"&gt;Iterations&lt;/label&gt; &lt;input type="range" id="iterations-parent"&gt; &lt;span id="iterations-output-parent" data-aria-live="polite"&gt;&lt;/span&gt; &lt;datalist id="iterations-choices-parent" aria-relevant="all"&gt; &lt;/datalist&gt; &lt;br/&gt;
+&lt;fieldset&gt;
+&lt;legend style="float:left; margin-right: 1em;"&gt;Curve&lt;/legend&gt; &lt;input type="radio" name="curve-mode-parent" id="curve-mode-complete-parent" value="complete" checked /&gt; &lt;label for="curve-mode-complete-parent"&gt;Complete&lt;/label&gt; &lt;input type="radio" name="curve-mode-parent" id="curve-mode-partial-parent" value="partial" /&gt; &lt;label for="curve-mode-partial-parent"&gt;&lt;span class="math inline"&gt;\([0, t]\)&lt;/span&gt;&lt;/label&gt; &lt;input type="radio" name="curve-mode-parent" id="curve-mode-none-parent" value="none" /&gt; &lt;label for="curve-mode-none-parent"&gt;None&lt;/label&gt;
+&lt;/fieldset&gt;
+&lt;/div&gt;
+&lt;div class="plot-controls"&gt;
+&lt;strong&gt;Child&lt;/strong&gt; &lt;br /&gt; &lt;label for="bez-t-sub"&gt;&lt;span class="math inline"&gt;\(t&amp;#39;\)&lt;/span&gt;&lt;/label&gt; &lt;input type="range" id="bez-t-sub" min="0" max="1" step="0.0125"/&gt; &lt;span id="bez-t-output-sub" data-aria-relevant="all"&gt;&lt;/span&gt; &lt;br/&gt; &lt;label for="iterations-sub"&gt;Iterations&lt;/label&gt; &lt;input type="range" id="iterations-sub"&gt; &lt;span id="iterations-output-sub" data-aria-live="polite"&gt;&lt;/span&gt; &lt;datalist id="iterations-choices-sub" aria-relevant="all"&gt; &lt;/datalist&gt; &lt;br/&gt;
+&lt;fieldset&gt;
+&lt;legend style="float:left; margin-right: 1em;"&gt;Curve&lt;/legend&gt; &lt;input type="radio" name="curve-mode-sub" id="curve-mode-complete-sub" value="complete" checked /&gt; &lt;label for="curve-mode-complete-sub"&gt;Complete&lt;/label&gt; &lt;input type="radio" name="curve-mode-sub" id="curve-mode-partial-sub" value="partial" /&gt; &lt;label for="curve-mode-partial-sub"&gt;&lt;span class="math inline"&gt;\([0, t&amp;#39;]\)&lt;/span&gt;&lt;/label&gt; &lt;input type="radio" name="curve-mode-sub" id="curve-mode-none-sub" value="none" /&gt; &lt;label for="curve-mode-none-sub"&gt;None&lt;/label&gt;
+&lt;/fieldset&gt;
+&lt;p&gt;&lt;br/&gt; &lt;label&gt;&lt;input type="checkbox" id="sub-plot-draw-cp"&gt;Label control points&lt;/label&gt;&lt;/p&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;script&gt;
+    'use strict';
+    var POINT_RADIUS = 7;
+    var POINT_FUDGE = 3;
+
+    // Generate subsequences of the control points
+    // (for use as control points of lesser degree curves)
+    function genCPChoices(cps) {
+        var DEFAULT_CONTROL_POINTS = [
+            new Point(60, 340),
+            new Point(40, 95),
+            new Point(240, 40),
+            new Point(345, 330)
+        ];
+        var choices = {};
+        var subseq, toDel;
+
+        cps = cps || DEFAULT_CONTROL_POINTS;
+        for (toDel = 0; toDel &lt; cps.length - 1; ++toDel) {
+            subseq = cps.slice();
+            subseq.splice(cps.length - toDel - 1, toDel);
+            choices[subseq.length - 1] = subseq;
+        }
+        return choices;
+    }
+
+    function Point(x, y) {
+        this.x = x;
+        this.y = y;
+    }
+    Point.prototype.distTo = function (other) {
+        return Math.sqrt(Math.pow(this.x - other.x, 2) + Math.pow(this.y - other.y, 2));
+    };
+    Point.prototype.interpolateTo = function (pt, t) {
+        var newX = (1 - t) * this.x + t * pt.x;
+        var newY = (1 - t) * this.y + t * pt.y;
+        return new Point(newX, newY);
+    };
+    Point.prototype.interpolateDist = function (pt, d) {
+        var t = d / this.distTo(pt);
+        return this.interpolateTo(pt, t);
+    };
+
+    function labelPts(ctx, pts, labels, labelStyle) {
+        labelStyle = labelStyle || {};
+        ctx.save();
+        pts.forEach(function (pt) {
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, POINT_RADIUS, 0, 2 * Math.PI);
+            ctx.fillStyle = labelStyle.fillStyle || 'rgba(0, 0, 0, 0.0)';
+            ctx.setLineDash(labelStyle.lineDash || [3]);
+            ctx.strokeStyle = labelStyle.strokeStyle || 'rgba(0, 0, 0, 0.7)';
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.font = labelStyle.font || 'bold 12px sans-serif';
+            ctx.textAlign = labelStyle.textAlign || 'center';
+            ctx.textBaseline = labelStyle.textBaseline || 'middle';
+            ctx.fillStyle = labelStyle.textFillStyle || 'rgba(0, 0, 0, 0.7)';
+            ctx.fillText(labels.get(pt), pt.x, pt.y + 1);
+        });
+        ctx.restore();
+    }
+
+    function drawIterations(ctx, pts, seg1Style, seg2Style, numPts) {
+        var i, j;
+        var a, aEnd,
+                b, bStart, bEnd,
+                c, cStart;
+        seg1Style = seg1Style || {};
+        seg2Style = seg2Style || {};
+
+        // By default, draw all points
+        if (isNaN(numPts)) {
+            numPts = ((pts.length + 1) * pts.length) / 2;
+        }
+
+        for (i = 0; i &lt; pts.length; ++i) {
+            for (j = 0; j &lt; pts[i].length - 1 &amp;&amp; numPts &gt; 0; ++j, --numPts) {
+                a = pts[i][j];
+                c = pts[i][j + 1];
+                b = pts[i + 1][j];
+
+                aEnd = a.interpolateDist(b, POINT_RADIUS);
+                bStart = b.interpolateDist(a, POINT_RADIUS);
+                bEnd = b.interpolateDist(c, POINT_RADIUS);
+                cStart = c.interpolateDist(b, POINT_RADIUS);
+
+                // Draw seg1 ([0, t])
+                ctx.save();
+                ctx.beginPath();
+                ctx.moveTo(aEnd.x, aEnd.y);
+                ctx.lineWidth = seg1Style.lineWidth || 3;
+                ctx.strokeStyle = seg1Style.strokeStyle || '#000000';
+                ctx.setLineDash(seg1Style.lineDash || []);
+                ctx.lineTo(bStart.x, bStart.y);
+                ctx.stroke();
+                ctx.restore();
+
+                // Draw seg2 ([t, 1])
+                ctx.save();
+                ctx.beginPath();
+                ctx.moveTo(bEnd.x, bEnd.y);
+                ctx.lineWidth = seg2Style.lineWidth || 1;
+                ctx.strokeStyle = seg2Style.strokeStyle || '#000000';
+                ctx.setLineDash(seg2Style.lineDash || [3]);
+                ctx.lineTo(cStart.x, cStart.y);
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+    }
+
+    function genLabels(pts, labelFor) {
+        var degree = pts[0].length;
+        var labelForPoint = new Map();
+        pts.forEach(function (generation, i) {
+            var n = generation.length;
+            var labelOffset = ((n + i) * (n + i + 1)) / 2 - (n * (n + 1)) / 2;
+            return generation.forEach(function (pt, j) {
+                labelForPoint.set(pt, labelFor(labelOffset + j, degree));
+            });
+        });
+        return labelForPoint;
+    }
+
+    // Label the control/derived points for a bezier curve at
+    // time t, along with interpolation lines.
+    function bezierPts(cps, t) {
+        if (cps.length === 1) {
+            return [cps];
+        }
+
+        var generation = [], pts;
+        var a, b, c;
+        for (var i = 0; i &lt; cps.length - 1; ++i) {
+            a = cps[i];
+            c = cps[i + 1];
+            b = a.interpolateTo(c, t);
+            generation.push(b);
+        }
+
+        pts = bezierPts(generation, t);
+        pts.splice(0, 0, cps);
+        return pts;
+    }
+
+    function drawCurve(ctx, pts, curveStyle) {
+        /* Given the tree of de Casteljau points, draw the curve according to curveStyle.mode
+         mode === 'complete' or undefined =&gt; use original cps
+         mode === 'partial' =&gt; choose the pts so that only the curve for [0, t] is drawn
+         mode === 'none' =&gt; we're done!
+         */
+        if (curveStyle.mode === 'none') {
+            return;
+        }
+
+        var curveCps;
+        if (curveStyle.mode === 'complete' || typeof curveStyle.mode === 'undefined') {
+            curveCps = pts[0];
+        } else if (curveStyle.mode === 'partial') {
+            curveCps = pts.map(function (gen) {
+                return gen[0];
+            });
+        }
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.lineWidth = curveStyle.lineWidth || 4;
+        ctx.strokeStyle = curveStyle.strokeStyle || '#ff0000';
+        ctx.setLineDash(curveStyle.lineDash || []);
+
+        ctx.moveTo(curveCps[0].x, curveCps[0].y);
+        switch (curveCps.length) {
+            case 2: // line
+                ctx.lineTo(curveCps[1].x, curveCps[1].y);
+                break;
+            case 3: // quadratic bezier
+                ctx.quadraticCurveTo(curveCps[1].x, curveCps[1].y,
+                        curveCps[2].x, curveCps[2].y);
+                break;
+            case 4: // cubic bezier
+                ctx.bezierCurveTo(curveCps[1].x, curveCps[1].y,
+                        curveCps[2].x, curveCps[2].y,
+                        curveCps[3].x, curveCps[3].y);
+                break;
+            default:
+                throw 'Unrecognized/unsupported number of control points!'
+        }
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    function bezierDemo(ctx, cps, curveStyle, t, iterations,
+                        seg1Style, seg2Style,
+                        labelFor, iterLabelStyle, cpLabelStyle) {
+        // Label the control/derived points for curve at time t
+        var pts = bezierPts(cps, t);
+        var labels = genLabels(pts, labelFor);
+        var ptsToLabel;
+        drawCurve(ctx, pts, curveStyle);
+        drawIterations(ctx, pts, seg1Style, seg2Style, iterations);
+        // flatten the pts array
+        ptsToLabel = Array.prototype.concat.apply([], pts);
+        if (!isNaN(iterations)) {
+            ptsToLabel.splice(pts[0].length + iterations);
+        }
+        labelPts(ctx, ptsToLabel, labels, iterLabelStyle);
+
+        // Re-draw the original control points with full opacity
+        labelPts(ctx, cps, labels, cpLabelStyle);
+    }
+
+    function refreshDemo() {
+        this.ctx2d.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        bezierDemo(this.ctx2d, this.cps, this.curveStyle, this.t, this.iters,
+                this.seg1Style, this.seg2Style, this.labelFor, this.iterLabelStyle, this.cpLabelStyle);
+    }
+
+    function initDemo(demoCtx) {
+        var canvas = demoCtx.canvas;
+        demoCtx.ctx2d = demoCtx.ctx2d || canvas.getContext('2d');
+
+        canvas.addEventListener('mousedown', function (e) {
+            demoCtx.cps.forEach(function (cp) {
+                if (cp.distTo(new Point(e.offsetX, e.offsetY)) &lt; (POINT_RADIUS + POINT_FUDGE)) {
+                    demoCtx.draggingPt = cp;
+                    // If multiple demos are sharing this point, only drag it for one of them
+                    e.stopImmediatePropagation();
+                }
+            });
+        });
+        canvas.addEventListener('mousemove', function (e) {
+            if (demoCtx.draggingPt) {
+                demoCtx.draggingPt.x = e.offsetX;
+                demoCtx.draggingPt.y = e.offsetY;
+                demoCtx.refreshDemo(demoCtx);
+            }
+            // Prevent chrome from showing text selection symbol
+            // on click-and-drag
+            e.preventDefault();
+        });
+        canvas.addEventListener('mouseup', function (e) {
+            demoCtx.draggingPt = null;
+        });
+
+        if (!demoCtx.cpChoices) {
+            demoCtx.cpChoices = genCPChoices(demoCtx.cps);
+        }
+
+        demoCtx.cps = demoCtx.cps || demoCtx.cpChoices[Object.keys(demoCtx.cpChoices).slice(-1)[0]];
+
+        // setup event handlers
+        if (demoCtx.degreeSlider) {
+            demoCtx.degreeSlider.onchange = demoCtx.degreeSlider.oninput = function () {
+                degreeUpdate(demoCtx, this.value);
+                demoCtx.refreshDemo();
+            };
+        }
+        if (demoCtx.tSlider) {
+            demoCtx.tSlider.onchange = demoCtx.tSlider.oninput = function () {
+                tUpdate(demoCtx, this.value);
+                demoCtx.refreshDemo();
+            };
+        }
+        if (demoCtx.iterSlider) {
+            demoCtx.iterSlider.onchange = demoCtx.iterSlider.oninput = function () {
+                iterationsUpdate(demoCtx, this.value);
+                demoCtx.refreshDemo();
+            };
+        }
+
+        demoCtx.curveStyle = demoCtx.curveStyle || {mode: 'complete'};
+        if (demoCtx.curveModeRadios) {
+            Array.prototype.forEach.call(demoCtx.curveModeRadios, function (radio) {
+                radio.onchange = function () {
+                    curveModeUpdate(demoCtx);
+                    demoCtx.refreshDemo();
+                };
+                radio.checked = radio.value === demoCtx.curveStyle.mode;
+            });
+        }
+
+        // initialize
+        if (demoCtx.degreeSlider) {
+            demoCtx.degreeSlider.value = demoCtx.cps.length - 1;
+            degreeUpdate(demoCtx, (demoCtx.cps.length - 1).toString());
+        }
+        if (demoCtx.tSlider) {
+            demoCtx.tSlider.value = demoCtx.t;
+            tUpdate(demoCtx, demoCtx.t.toString());
+        }
+        if (demoCtx.iterChoices) {
+            updateIterationList(demoCtx);
+            iterationsUpdate(demoCtx, demoCtx.iterSlider.value);
+        }
+    }
+
+    function updateIterationList(demoCtx) {
+        var n = demoCtx.cps.length - 1;
+        var maxIters = n * (n + 1) / 2;
+        var slider = demoCtx.iterSlider;
+        var choices = demoCtx.iterChoices;
+        var newValue = slider.value === slider.getAttribute('max') ? maxIters : slider.value;
+        var i, opt;
+
+        // Clear the current choices
+        while (choices.firstChild) {
+            choices.removeChild(choices.firstChild);
+        }
+
+        for (i = 0; i &lt;= maxIters; ++i) {
+            opt = document.createElement('option');
+            opt.value = i;
+            choices.appendChild(opt);
+        }
+
+        slider.setAttribute('min', 0);
+        slider.setAttribute('max', maxIters);
+        slider.setAttribute('list', demoCtx.iterChoices.id);
+        slider.value = newValue;
+    }
+
+    function curveModeUpdate(demoCtx) {
+        var radios = demoCtx.curveModeRadios;
+        Array.prototype.forEach.call(radios, function (radio) {
+            if (radio.checked) {
+                demoCtx.curveStyle.mode = radio.value;
+            }
+        });
+    }
+    function degreeUpdate(demoCtx, val) {
+        if (!demoCtx.cpChoices[val]) {
+            throw 'Unrecognized/unsupported degree';
+        }
+        demoCtx.degreeOutput.textContent = val.toString();
+        demoCtx.cps = demoCtx.cpChoices[val];
+        updateIterationList(demoCtx);
+    }
+    function tUpdate(demoCtx, val) {
+        demoCtx.t = parseFloat(val);
+        demoCtx.tOutput.textContent = demoCtx.t.toFixed(4);
+    }
+    function iterationsUpdate(demoCtx, val) {
+        var label = val;
+        demoCtx.iters = parseInt(val);
+        if (isNaN(val) || parseInt(val) &gt;= parseInt(demoCtx.iterSlider.getAttribute("max"))) {
+            label = 'All';
+            demoCtx.iters = NaN;
+        }
+        demoCtx.iterOutput.textContent = label.toString();
+    }
+
+&lt;/script&gt;
+&lt;script&gt;
+    'use strict';
+
+    var alphaLabel = function (i, degree) {
+            var totalPts = (degree * (degree + 1)) / 2;
+            return i == totalPts - 1 ? 'P' : String.fromCharCode('A'.charCodeAt(0) + i);
+    };
+
+    var mainCtx = {
+        t: 0.7250,
+        cpLabelStyle: {
+            strokeStyle: 'rgba(0, 0, 255, 1)',
+            fillStyle: 'rgba(255, 255, 255, 1)',
+            lineDash: []
+        },
+        labelFor: alphaLabel,
+        refreshDemo: refreshDemo,
+        canvas: document.getElementById('viewport'),
+        degreeSlider: document.getElementById('degree'),
+        degreeOutput: document.getElementById('degree-output'),
+        tSlider: document.getElementById('bez-t'),
+        tOutput: document.getElementById('bez-t-output'),
+        iterSlider: document.getElementById('iterations'),
+        iterOutput: document.getElementById('iterations-output'),
+        iterChoices: document.getElementById('iterations-choices'),
+        curveModeRadios: document.getElementsByName('curve-mode')
+    };
+    initDemo(mainCtx);
+    mainCtx.refreshDemo();
+
+
+    var parentCtx, subCtx;
+    var visibleSubCPLabelStyle = {
+        strokeStyle: 'rgba(0, 255, 0, 1)',
+        fillStyle: 'rgba(255, 255, 255, 1)',
+        textFillStyle: 'rgba(0, 0, 0, 1)',
+        lineDash: []
+    };
+    var visibleSubCPIterLabelStyle = {
+        strokeStyle: 'rgba(0, 255, 0, 0.5)',
+        fillStyle: 'rgba(255, 255, 255, 0.5)',
+        textFillStyle: 'rgba(0, 0, 0, 0.5)'
+    };
+    var invisibleSubCPLabelStyle = {
+        strokeStyle: 'rgba(0, 0, 0, 0)',
+        fillStyle: 'rgba(0, 0, 0, 0)',
+        textFillStyle: 'rgba(0, 0, 0, 0)',
+    };
+    var invisibleSubCPIterLabelStyle = {
+        strokeStyle: 'rgba(0, 255, 0, 0.5)',
+        fillStyle: 'rgba(0, 0, 0, 0)',
+        textFillStyle: 'rgba(0, 0, 0, 0)',
+    };
+    var subCPDrawToggle;
+
+    var refresh = function () {
+        parentCtx.ctx2d.clearRect(0, 0, parentCtx.canvas.width, parentCtx.canvas.height);
+        bezierDemo(parentCtx.ctx2d, parentCtx.cps, parentCtx.curveStyle, parentCtx.t, parentCtx.iters,
+                parentCtx.seg1Style, parentCtx.seg2Style, parentCtx.labelFor, parentCtx.iterLabelStyle, parentCtx.cpLabelStyle);
+        if (subCtx) {
+            subCtx.cps = bezierPts(parentCtx.cps, parentCtx.t).map(function (gen) {
+                return gen[0];
+            });
+            updateIterationList(subCtx);
+            iterationsUpdate(subCtx, subCtx.iters);
+            bezierDemo(subCtx.ctx2d, subCtx.cps, subCtx.curveStyle, subCtx.t, subCtx.iters,
+                    subCtx.seg1Style, subCtx.seg2Style, subCtx.labelFor, subCtx.iterLabelStyle, subCtx.cpLabelStyle);
+            if (subCPDrawToggle &amp;&amp; !subCPDrawToggle.checked) {
+                labelPts(subCtx.ctx2d, parentCtx.cps, genLabels([parentCtx.cps], parentCtx.labelFor), parentCtx.cpLabelStyle);
+            }
+        }
+    };
+
+    parentCtx = {
+        t: 0.7250,
+        labelFor: alphaLabel,
+        refreshDemo: refresh,
+        cpLabelStyle: {
+            strokeStyle: 'rgba(0, 0, 255, 1)',
+            fillStyle: 'rgba(255, 255, 255, 1)',
+            lineDash: []
+        },
+        iterLabelStyle: {
+            strokeStyle: 'rgba(0, 0, 255, 0.7)'
+        },
+        seg1Style: {
+            lineWidth: 5,
+            strokeStyle: 'rgba(128, 128, 128, 1)',
+            lineDash: []
+        },
+        seg2Style: {
+            lineWidth: 2,
+            strokeStyle: 'rgba(128, 128, 128, 1)',
+            lineDash: [3]
+        },
+        curveStyle: {mode: 'complete', lineDash: [3]},
+        canvas: document.getElementById('viewport-subdiv'),
+        degreeSlider: document.getElementById('degree-parent'),
+        degreeOutput: document.getElementById('degree-output-parent'),
+        tSlider: document.getElementById('bez-t-parent'),
+        tOutput: document.getElementById('bez-t-output-parent'),
+        iterSlider: document.getElementById('iterations-parent'),
+        iterOutput: document.getElementById('iterations-output-parent'),
+        iterChoices: document.getElementById('iterations-choices-parent'),
+        curveModeRadios: document.getElementsByName('curve-mode-parent')
+    };
+    initDemo(parentCtx);
+    subCtx = {
+        t: 0.4,
+        cps: parentCtx.cps,
+        labelFor: function (i, degree) {
+            var totalPts = (degree * (degree + 1)) / 2;
+            switch (i) {
+                case degree - 1:
+                    return 'P';
+                case totalPts - 1:
+                    return 'Z';
+                default:
+                    return String.fromCharCode('1'.charCodeAt(0) + i);
+            }
+        },
+        refreshDemo: refresh,
+        canvas: parentCtx.canvas,
+        curveStyle: {mode: 'partial'},
+        cpLabelStyle: invisibleSubCPLabelStyle,
+        iterLabelStyle: invisibleSubCPIterLabelStyle,
+        seg1Style: {
+            lineWidth: 2,
+            strokeStyle: '#000000',
+            lineDash: []
+        },
+        seg2Style: {
+            lineWidth: 1.5,
+            strokeStyle: '#000000',
+            lineDash: [2]
+        },
+        tSlider: document.getElementById('bez-t-sub'),
+        tOutput: document.getElementById('bez-t-output-sub'),
+        iterSlider: document.getElementById('iterations-sub'),
+        iterOutput: document.getElementById('iterations-output-sub'),
+        iterChoices: document.getElementById('iterations-choices-sub'),
+        curveModeRadios: document.getElementsByName('curve-mode-sub')
+    };
+    initDemo(subCtx);
+    subCtx.refreshDemo();
+    subCPDrawToggle = document.getElementById('sub-plot-draw-cp');
+    subCPDrawToggle.onchange = function () {
+        if (subCPDrawToggle.checked) {
+            subCtx.cpLabelStyle = visibleSubCPLabelStyle;
+            subCtx.iterLabelStyle = visibleSubCPIterLabelStyle;
+        } else {
+            subCtx.cpLabelStyle = invisibleSubCPLabelStyle;
+            subCtx.iterLabelStyle = invisibleSubCPIterLabelStyle;
+        }
+        subCtx.refreshDemo();
+    };
+&lt;/script&gt;
+</content><category term="bezier"></category></entry><entry><title>Unqualified failure</title><link href="https://dbarbs.net/posts/2014/07/unqualified-failure/" rel="alternate"></link><published>2014-07-20T00:00:00-04:00</published><updated>2014-07-20T00:00:00-04:00</updated><author><name>Andrew Barbarello</name></author><id>tag:dbarbs.net,2014-07-20:/posts/2014/07/unqualified-failure/</id><summary type="html">&lt;p&gt;It turns out that &lt;code&gt;#include&lt;/code&gt;ing iostream can get you a &lt;a href="http://stackoverflow.com/questions/9725447/why-does-iostream-define-an-abs-function-and-how-can-i-stop-it"&gt;bonus abs function&lt;/a&gt;. That is, the following won’t compile in GCC (4.8) or Clang (3.4):&lt;/p&gt;
+&lt;div class="sourceCode" id="cb1"&gt;&lt;pre class="sourceCode cpp"&gt;&lt;code class="sourceCode cpp"&gt;&lt;a class="sourceLine" id="cb1-1" data-line-number="1"&gt;&lt;span class="dt"&gt;int&lt;/span&gt; main() {&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-2" data-line-number="2"&gt; abs(&lt;span class="dv"&gt;-4&lt;/span&gt;&lt;span class="fl"&gt;.8&lt;/span&gt;);&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-3" data-line-number="3"&gt; &lt;span class="cf"&gt;return&lt;/span&gt; &lt;span class="dv"&gt;0&lt;/span&gt;;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-4" data-line-number="4"&gt;}&lt;/a&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;but the following will (on my machine), &lt;strong&gt;if&lt;/strong&gt; (and only if) compiled with &lt;code&gt;-std …&lt;/code&gt;&lt;/p&gt;</summary><content type="html">&lt;p&gt;It turns out that &lt;code&gt;#include&lt;/code&gt;ing iostream can get you a &lt;a href="http://stackoverflow.com/questions/9725447/why-does-iostream-define-an-abs-function-and-how-can-i-stop-it"&gt;bonus abs function&lt;/a&gt;. That is, the following won’t compile in GCC (4.8) or Clang (3.4):&lt;/p&gt;
+&lt;div class="sourceCode" id="cb1"&gt;&lt;pre class="sourceCode cpp"&gt;&lt;code class="sourceCode cpp"&gt;&lt;a class="sourceLine" id="cb1-1" data-line-number="1"&gt;&lt;span class="dt"&gt;int&lt;/span&gt; main() {&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-2" data-line-number="2"&gt; abs(&lt;span class="dv"&gt;-4&lt;/span&gt;&lt;span class="fl"&gt;.8&lt;/span&gt;);&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-3" data-line-number="3"&gt; &lt;span class="cf"&gt;return&lt;/span&gt; &lt;span class="dv"&gt;0&lt;/span&gt;;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-4" data-line-number="4"&gt;}&lt;/a&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;but the following will (on my machine), &lt;strong&gt;if&lt;/strong&gt; (and only if) compiled with &lt;code&gt;-std=c++11&lt;/code&gt;:&lt;/p&gt;
+&lt;div class="sourceCode" id="cb2"&gt;&lt;pre class="sourceCode cpp"&gt;&lt;code class="sourceCode cpp"&gt;&lt;a class="sourceLine" id="cb2-1" data-line-number="1"&gt;&lt;span class="pp"&gt;#include &lt;/span&gt;&lt;span class="im"&gt;&amp;lt;iostream&amp;gt;&lt;/span&gt;&lt;span class="pp"&gt; &lt;/span&gt;&lt;span class="co"&gt;// BAM!&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-2" data-line-number="2"&gt;&lt;span class="dt"&gt;int&lt;/span&gt; main() {&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-3" data-line-number="3"&gt; abs(&lt;span class="dv"&gt;-4&lt;/span&gt;&lt;span class="fl"&gt;.8&lt;/span&gt;); &lt;span class="co"&gt;// Evaluates to 4!&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-4" data-line-number="4"&gt; &lt;span class="cf"&gt;return&lt;/span&gt; &lt;span class="dv"&gt;0&lt;/span&gt;;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-5" data-line-number="5"&gt;}&lt;/a&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;A compiler’s implementation of &lt;code&gt;&amp;lt;iostream&amp;gt;&lt;/code&gt; may depend on (and include) &lt;code&gt;&amp;lt;cstdlib&amp;gt;&lt;/code&gt;, and there’s a &lt;a href="http://stackoverflow.com/a/10445657/756104"&gt;bit&lt;/a&gt; in the standard that explicitly allows implementations to import C standard library functions into the global namespace in addition to making them available in namespace &lt;code&gt;std&lt;/code&gt;. In this case, the following declaration is introduced when including &lt;code&gt;&amp;lt;iostream&amp;gt;&lt;/code&gt;:&lt;/p&gt;
+&lt;div class="sourceCode" id="cb3"&gt;&lt;pre class="sourceCode c"&gt;&lt;code class="sourceCode c"&gt;&lt;a class="sourceLine" id="cb3-1" data-line-number="1"&gt;&lt;span class="co"&gt;/* Return the absolute value of X.  */&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb3-2" data-line-number="2"&gt;&lt;span class="kw"&gt;extern&lt;/span&gt; &lt;span class="dt"&gt;int&lt;/span&gt; abs (&lt;span class="dt"&gt;int&lt;/span&gt; __x) __THROW __attribute__ ((__const__)) __wur;&lt;/a&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;&lt;em&gt;Only&lt;/em&gt; this declaration of &lt;code&gt;abs&lt;/code&gt; is made available, so &lt;code&gt;abs(-4.8)&lt;/code&gt; compiles without so much as a warning with GCC (Clang gives a warning about the implicit conversion of the argument to &lt;code&gt;int&lt;/code&gt;). If the call is qualified (&lt;code&gt;std::abs&lt;/code&gt;), the code fails to compile as other declarations (for &lt;code&gt;long&lt;/code&gt; and &lt;code&gt;long long&lt;/code&gt;) are available in namespace &lt;code&gt;std&lt;/code&gt;.&lt;/p&gt;
+&lt;h2 id="subtle-bugs"&gt;Subtle Bugs&lt;/h2&gt;
+&lt;p&gt;A while back, I wrote a &lt;a href="https://github.com/abarbs/class-raytracer"&gt;ray tracer&lt;/a&gt; for a computer graphics class assignment, and came across a rendering bug visible when using any compiler other than MSVC. For my first non-trivial C++ program, I was amazed things would render correctly using &lt;em&gt;any&lt;/em&gt; compiler, so I just continued along with MSVC until the assignment was submitted.&lt;/p&gt;
+&lt;p&gt;A couple of renders as produced by the program compiled with MSVC (the way they were supposed to look):&lt;/p&gt;
+&lt;p&gt;&lt;img src="/img/2014-07-20-model1.jpg" height="300px"/&gt; &lt;img src="/img/2014-07-20-model2.jpg" height="300px"/&gt;&lt;/p&gt;
+&lt;p&gt;and those same scenes rendered by the ray tracer compiled with GCC 4.8:&lt;/p&gt;
+&lt;p&gt;&lt;img src="/img/2014-07-20-old_model1.jpg" height="300px"/&gt; &lt;img src="/img/2014-07-20-old_model2.jpg" height="300px"/&gt;&lt;/p&gt;
+&lt;p&gt;Not &lt;em&gt;too&lt;/em&gt; far off, but no good. The first scene is particularly glitchy, and in the second you can notice some weirdness with the red cylinder.&lt;/p&gt;
+&lt;p&gt;Looking into it a while after the fact, I found that the issue came down to a couple member functions of &lt;code&gt;QuadricCollection&lt;/code&gt; (an instance of this class is an object defined by the intersection of quadrics):&lt;/p&gt;
+&lt;div class="sourceCode" id="cb4"&gt;&lt;pre class="sourceCode numberSource cpp numberLines"&gt;&lt;code class="sourceCode cpp"&gt;&lt;a class="sourceLine" id="cb4-1" data-line-number="1"&gt;&lt;span class="dt"&gt;bool&lt;/span&gt; onSurface(&lt;span class="at"&gt;const&lt;/span&gt; Eigen::Vector4d &amp;amp;pt) {&lt;/a&gt;
+&lt;a class="sourceLine" id="cb4-2" data-line-number="2"&gt;    &lt;span class="dt"&gt;bool&lt;/span&gt; onBoundary = &lt;span class="kw"&gt;false&lt;/span&gt;;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb4-3" data-line-number="3"&gt;    &lt;span class="dt"&gt;double&lt;/span&gt; distToSurface;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb4-4" data-line-number="4"&gt;    &lt;span class="cf"&gt;for&lt;/span&gt; (&lt;span class="dt"&gt;unsigned&lt;/span&gt; &lt;span class="dt"&gt;int&lt;/span&gt; i = &lt;span class="dv"&gt;0&lt;/span&gt;; i &amp;lt; quadrics.size(); ++i) {&lt;/a&gt;
+&lt;a class="sourceLine" id="cb4-5" data-line-number="5"&gt;        Eigen::Matrix4d &amp;amp;Q = quadrics[i];&lt;/a&gt;
+&lt;a class="sourceLine" id="cb4-6" data-line-number="6"&gt;        &lt;span class="cf"&gt;if&lt;/span&gt; ((distToSurface = pt.transpose() * Q * pt) &amp;gt; EPSILON)&lt;/a&gt;
+&lt;a class="sourceLine" id="cb4-7" data-line-number="7"&gt;            &lt;span class="cf"&gt;return&lt;/span&gt; &lt;span class="kw"&gt;false&lt;/span&gt;; &lt;span class="co"&gt;// pt not in intersection of all quadrics&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb4-8" data-line-number="8"&gt;        &lt;span class="cf"&gt;else&lt;/span&gt; &lt;span class="cf"&gt;if&lt;/span&gt; (abs(distToSurface) &amp;lt; EPSILON)&lt;/a&gt;
+&lt;a class="sourceLine" id="cb4-9" data-line-number="9"&gt;            onBoundary = &lt;span class="kw"&gt;true&lt;/span&gt;; &lt;span class="co"&gt;// pt on boundary of at least one quadric&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb4-10" data-line-number="10"&gt;    }&lt;/a&gt;
+&lt;a class="sourceLine" id="cb4-11" data-line-number="11"&gt;    &lt;span class="cf"&gt;return&lt;/span&gt; onBoundary;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb4-12" data-line-number="12"&gt;}&lt;/a&gt;
+&lt;a class="sourceLine" id="cb4-13" data-line-number="13"&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb4-14" data-line-number="14"&gt;&lt;span class="kw"&gt;virtual&lt;/span&gt; Eigen::Vector4d getUnitNormal(&lt;span class="at"&gt;const&lt;/span&gt; Eigen::Vector4d &amp;amp;point) {&lt;/a&gt;
+&lt;a class="sourceLine" id="cb4-15" data-line-number="15"&gt;    &lt;span class="ex"&gt;BOOST_&lt;/span&gt;ASSERT_MSG(point[&lt;span class="dv"&gt;3&lt;/span&gt;] == &lt;span class="dv"&gt;1&lt;/span&gt;, &lt;span class="st"&gt;&amp;quot;getNormal needs a homogeneous point!&amp;quot;&lt;/span&gt;);&lt;/a&gt;
+&lt;a class="sourceLine" id="cb4-16" data-line-number="16"&gt;    &lt;span class="ex"&gt;BOOST_&lt;/span&gt;ASSERT_MSG(onSurface(point), &lt;span class="st"&gt;&amp;quot;Asked for normal at point not on surface!&amp;quot;&lt;/span&gt;);&lt;/a&gt;
+&lt;a class="sourceLine" id="cb4-17" data-line-number="17"&gt;    &lt;span class="cf"&gt;for&lt;/span&gt; (&lt;span class="dt"&gt;unsigned&lt;/span&gt; &lt;span class="dt"&gt;int&lt;/span&gt; i = &lt;span class="dv"&gt;0&lt;/span&gt;; i &amp;lt; quadrics.size(); ++i) {&lt;/a&gt;
+&lt;a class="sourceLine" id="cb4-18" data-line-number="18"&gt;        Eigen::Matrix4d &amp;amp;Q = quadrics[i];&lt;/a&gt;
+&lt;a class="sourceLine" id="cb4-19" data-line-number="19"&gt;        &lt;span class="dt"&gt;double&lt;/span&gt; d = point.transpose() * Q * point;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb4-20" data-line-number="20"&gt;        &lt;span class="cf"&gt;if&lt;/span&gt; (abs(d) &amp;lt; EPSILON) {&lt;/a&gt;
+&lt;a class="sourceLine" id="cb4-21" data-line-number="21"&gt;            &lt;span class="co"&gt;// Point is on the surface of the quadric Q&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb4-22" data-line-number="22"&gt;            &lt;span class="cf"&gt;return&lt;/span&gt; (&lt;span class="dv"&gt;2&lt;/span&gt; * Q * point).cwiseProduct(Eigen::Vector4d(&lt;span class="dv"&gt;1&lt;/span&gt;, &lt;span class="dv"&gt;1&lt;/span&gt;, &lt;span class="dv"&gt;1&lt;/span&gt;, &lt;span class="dv"&gt;0&lt;/span&gt;)).normalized();&lt;/a&gt;
+&lt;a class="sourceLine" id="cb4-23" data-line-number="23"&gt;        }&lt;/a&gt;
+&lt;a class="sourceLine" id="cb4-24" data-line-number="24"&gt;    }&lt;/a&gt;
+&lt;a class="sourceLine" id="cb4-25" data-line-number="25"&gt;}&lt;/a&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;The use of the unqualified &lt;code&gt;abs&lt;/code&gt; function (lines 8 and 20) opens this code up to inconsistency across implementations. It just so happens that with MSVC 2010, the &lt;code&gt;abs&lt;/code&gt; that is resolved &lt;em&gt;does&lt;/em&gt; operate on floating points, and everything renders fine using that compiler.&lt;/p&gt;
+</content></entry><entry><title>Installing Clover, OS X, and Linux Mint</title><link href="https://dbarbs.net/posts/2014/02/installing-clover-os-x-and-linux-mint/" rel="alternate"></link><published>2014-02-17T00:00:00-05:00</published><updated>2014-02-17T00:00:00-05:00</updated><author><name>Andrew Barbarello</name></author><id>tag:dbarbs.net,2014-02-17:/posts/2014/02/installing-clover-os-x-and-linux-mint/</id><summary type="html">&lt;div class="bs-callout bs-callout-warning" data-markdown="1"&gt;
+&lt;h4 id="warning"&gt;Warning&lt;/h4&gt;
+&lt;p&gt;This post is from a different time, when &lt;a href="http://www.unibeast.com/"&gt;Unibeast&lt;/a&gt; only offered the Chameleon/Chimera (MBR) bootloaders, and you had to &lt;a href="https://www.reddit.com/r/hackintosh/comments/2rwub6/unibeast_vs_clover/"&gt;choose&lt;/a&gt; between convenience and Clover. Now, I’d recommend just using latest Unibeast tutorial. Depending on your motherboard, you may still need to PMPatch your bios as described below …&lt;/p&gt;&lt;/div&gt;</summary><content type="html">&lt;div class="bs-callout bs-callout-warning" data-markdown="1"&gt;
+&lt;h4 id="warning"&gt;Warning&lt;/h4&gt;
+&lt;p&gt;This post is from a different time, when &lt;a href="http://www.unibeast.com/"&gt;Unibeast&lt;/a&gt; only offered the Chameleon/Chimera (MBR) bootloaders, and you had to &lt;a href="https://www.reddit.com/r/hackintosh/comments/2rwub6/unibeast_vs_clover/"&gt;choose&lt;/a&gt; between convenience and Clover. Now, I’d recommend just using latest Unibeast tutorial. Depending on your motherboard, you may still need to PMPatch your bios as described below.&lt;/p&gt;
+&lt;/div&gt;
+&lt;p&gt;I just finished installing Mac OS and Linux Mint to a GPT-partitioned disk, and am booting them using the &lt;a href="http://sourceforge.net/projects/cloverefiboot/"&gt;Clover&lt;/a&gt; EFI bootloader. The bootloader is also able to boot a UEFI Windows 8 installation on another disk, though unable to boot Windows 7 on a separate, MBR-partitioned disk. I am writing what I did here since I didn’t follow any single tutorial to the letter, I know the process worked for me, and so I can reference this page in the future. For the record, I am using an Asus P8Z77 V-Pro motherboard with a PMPatched 1805 bios from &lt;a href="http://biosrepo.wordpress.com/"&gt;here&lt;/a&gt;, along with an i7 3770k CPU (in case someone googles those parts looking for a guide).&lt;/p&gt;
+&lt;p&gt;I went for this configuration after having previously installed OS X with the Chimera bootloader using the &lt;a href="http://www.tonymacx86.com/374-unibeast-install-os-x-mavericks-any-supported-intel-based-pc.html"&gt;Unibeast/Multibeast&lt;/a&gt; method. While that method of installation is simple and works well, I elected to start over with Clover so I could boot Linux Mint, OS X, and Windows 8 all via the same EFI bootloader.&lt;/p&gt;
+&lt;p&gt;&lt;a href="http://www.rodsbooks.com/gdisk/whatsgpt.html"&gt;These&lt;/a&gt; &lt;a href="http://www.rodsbooks.com/gdisk/booting.html"&gt;pages&lt;/a&gt; by Rod Smith and the Clover &lt;a href="http://clover-wiki.zetam.org/Home"&gt;wiki&lt;/a&gt; helped me get a grasp on what I was actually setting up, and I basically followed an amalgamation of &lt;a href="http://cloverboot.weebly.com/"&gt;this&lt;/a&gt; tutorial and &lt;a href="http://www.tonymacx86.com/alternate-bootloaders/113679-using-unibeast-create-clover-installer.html"&gt;this&lt;/a&gt; forum post to get the job done. The key piece of information I first missed was that, when making a bootable USB OS X installer using Clover, you need to augment &lt;code&gt;EFI/Clover/kexts&lt;/code&gt; with whatever kexts you would typically install via Multibeast to get OS X to boot and have network access. For me, that meant ensuring that &lt;code&gt;FakeSMC.kext&lt;/code&gt;, &lt;code&gt;AHCI_3rdParty_SATA.kext&lt;/code&gt;, and the modified &lt;code&gt;IONetworkingFamily.kext&lt;/code&gt; packaged with Multibeast were placed in &lt;code&gt;EFI/Clover/kexts/10.9&lt;/code&gt; on the EFI partition of my USB stick.&lt;/p&gt;
+&lt;h2 id="my-mavericks-installation"&gt;My Mavericks installation&lt;/h2&gt;
+&lt;p&gt;The installation was done using a USB thumb stick, a second Mac (to prepare the USB stick), and the target machine, and went as follows:&lt;/p&gt;
+&lt;ol type="1"&gt;
+&lt;li&gt;Prepare the USB stick with a GUID Partition table and a single, “Mac OS Extended (Journaled)” (HFS+)-formatted partition&lt;/li&gt;
+&lt;li&gt;Use the Clover installer pkg to install the bootloader &lt;em&gt;to the thumb stick&lt;/em&gt; (Using “Change Install Location…”). I used the options “Install for UEFI Booting only”, “Drivers64UEFI/DataHubDxe-64”, “Drivers64UEFI/OsxAptioFixDrv-64”, and “Install RC scripts on target volume”.&lt;/li&gt;
+&lt;li&gt;Copy &lt;code&gt;FakeSMC.kext&lt;/code&gt;, &lt;code&gt;AHCI_3rdParty_SATA.kext&lt;/code&gt;, and the modified &lt;code&gt;IONetworkingFamily.kext&lt;/code&gt; to &lt;code&gt;EFI/Clover/kexts/10.9&lt;/code&gt; on the EFI partition of the USB stick. At this point, I was able to boot off the USB stick into the Mavericks installer. The USB stick must be booted as an &lt;em&gt;EFI&lt;/em&gt; device (in my case, this meant selecting “UEFI: Sandisk Cruzer Glide” from the BIOS boot menu).&lt;/li&gt;
+&lt;li&gt;Use the installer to partition the target disk and set up Mavericks. The installation requires a restart, so the PC must &lt;em&gt;again&lt;/em&gt; boot from the USB stick (back into the OS X installer) to complete the installation.&lt;/li&gt;
+&lt;li&gt;At the end of the previous step, you should be brought to the desktop of your Mavericks installation. Run Multibeast to install the aforementioned kexts to &lt;code&gt;/System/Library/Extensions&lt;/code&gt;. Then, install Clover to the hard drive with the same settings as used to prepare the USB stick. As noted in the aforementioned forum &lt;a href="http://www.tonymacx86.com/alternate-bootloaders/113679-using-unibeast-create-clover-installer.html"&gt;post&lt;/a&gt;, you &lt;em&gt;do not&lt;/em&gt; need to move any kexts to the EFI partition of your hard drive, as they are now present in S/L/E.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;After all that, I was able to boot into the Clover bootloader on my hard drive and, subsequently, into Mavericks.&lt;/p&gt;
+&lt;h3 id="getting-speedstep-to-work"&gt;Getting SpeedStep to work&lt;/h3&gt;
+&lt;p&gt;The thrill of having successfully booted Mavericks from my HD was quickly overcome by a sinking feeling: Everything. Was. Going. Very. Very. Slowly.&lt;/p&gt;
+&lt;p&gt;HWMonitor revealed that OS X had my CPU running at a fixed 800MHz clock speed, just a couple thousand cycles lower than acceptable. After some experimentation with the auto-generated &lt;a href="http://clover-wiki.zetam.org/Configuration"&gt;config.plist&lt;/a&gt; file, I found that deleting the &lt;code&gt;PLimitDict&lt;/code&gt;, &lt;code&gt;UnderVoltStep&lt;/code&gt;, &lt;code&gt;MinMultiplier&lt;/code&gt;, and &lt;code&gt;MaxMultiplier&lt;/code&gt; keys under &lt;code&gt;ACPI/SSDT&lt;/code&gt; resulted in Mavericks intelligently scaling clockspeed in the range of 1.6-3.7GHz.&lt;/p&gt;
+&lt;h2 id="installing-linux-mint"&gt;Installing Linux Mint&lt;/h2&gt;
+&lt;p&gt;After getting everything in order with Mavericks, I installed Mint to a different partition on the same drive. This part was super straight forward, I just used the “USB Image Writer” in Mint (on a different machine) to write the Mint 16 iso to the USB drive, booted the drive as an EFI device, and used the GUI installer. The only important part to remember is to have the installer place the boot loader in the &lt;em&gt;ESP&lt;/em&gt; (the EFI System Partition), as per Rod Smith’s &lt;a href="http://www.rodsbooks.com/linux-uefi/"&gt;guide&lt;/a&gt;.&lt;/p&gt;
+</content></entry><entry><title>Understanding the CSS box model and floats</title><link href="https://dbarbs.net/posts/2014/02/understanding-the-css-box-model-and-floats/" rel="alternate"></link><published>2014-02-07T00:00:00-05:00</published><updated>2014-02-07T00:00:00-05:00</updated><author><name>Andrew Barbarello</name></author><id>tag:dbarbs.net,2014-02-07:/posts/2014/02/understanding-the-css-box-model-and-floats/</id><summary type="html">
+&lt;p&gt;I went with the standard two-column layout for this site: content and sidebar. I wanted the columns to have “fluid width”, equal height, and different background colors, so I referenced &lt;a href="http://css-tricks.com/fluid-width-equal-height-columns/"&gt;this article&lt;/a&gt; and used the &amp;quot; &lt;a href="http://nicolasgallagher.com/multiple-backgrounds-and-borders-with-css2/demo/backgrounds.html#faux"&gt;Nicholas Gallagher method&lt;/a&gt;&amp;quot; to implement it.&lt;/p&gt;
+&lt;p&gt;I recommend checking out the Gallagher method &lt;a href="http://css-tricks.com/fluid-width-equal-height-columns/"&gt;example&lt;/a&gt; at …&lt;/p&gt;</summary><content type="html">
+&lt;p&gt;I went with the standard two-column layout for this site: content and sidebar. I wanted the columns to have “fluid width”, equal height, and different background colors, so I referenced &lt;a href="http://css-tricks.com/fluid-width-equal-height-columns/"&gt;this article&lt;/a&gt; and used the &amp;quot; &lt;a href="http://nicolasgallagher.com/multiple-backgrounds-and-borders-with-css2/demo/backgrounds.html#faux"&gt;Nicholas Gallagher method&lt;/a&gt;&amp;quot; to implement it.&lt;/p&gt;
+&lt;p&gt;I recommend checking out the Gallagher method &lt;a href="http://css-tricks.com/fluid-width-equal-height-columns/"&gt;example&lt;/a&gt; at CSS-tricks with the browser’s element inspector to see what’s going on there, as it demonstrates the use of CSS pseudo-elements, the &lt;code&gt;overflow: hidden&lt;/code&gt; “&lt;a href="http://colinaarts.com/articles/the-magic-of-overflow-hidden/"&gt;trick&lt;/a&gt;” (to create a Block Formatting Context), and how floats and absolutely/relatively-positioned elements are laid out.&lt;/p&gt;
+&lt;p&gt;Here are some examples that I came up with to try and come to grips with how floats are laid out:&lt;/p&gt;
+&lt;p&gt;Given this CSS:&lt;/p&gt;
+&lt;div class="sourceCode" id="cb1"&gt;&lt;pre class="sourceCode css"&gt;&lt;code class="sourceCode css"&gt;&lt;a class="sourceLine" id="cb1-1" data-line-number="1"&gt;&lt;span class="fu"&gt;.example&lt;/span&gt; {&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-2" data-line-number="2"&gt;    &lt;span class="kw"&gt;margin-bottom&lt;/span&gt;: &lt;span class="dv"&gt;50px&lt;/span&gt;;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-3" data-line-number="3"&gt;    &lt;span class="kw"&gt;width&lt;/span&gt;:&lt;span class="dv"&gt;100%&lt;/span&gt;;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-4" data-line-number="4"&gt;    &lt;span class="kw"&gt;float&lt;/span&gt;: &lt;span class="dv"&gt;left&lt;/span&gt;;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-5" data-line-number="5"&gt;    &lt;span class="kw"&gt;border&lt;/span&gt;: &lt;span class="dv"&gt;1px&lt;/span&gt; &lt;span class="dv"&gt;dashed&lt;/span&gt; orange;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-6" data-line-number="6"&gt;}&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-7" data-line-number="7"&gt;&lt;span class="fu"&gt;.example&lt;/span&gt; div {&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-8" data-line-number="8"&gt;    &lt;span class="kw"&gt;width&lt;/span&gt;:&lt;span class="dv"&gt;20%&lt;/span&gt;;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-9" data-line-number="9"&gt;    &lt;span class="kw"&gt;border&lt;/span&gt;: &lt;span class="dv"&gt;5px&lt;/span&gt; &lt;span class="dv"&gt;solid&lt;/span&gt; &lt;span class="dv"&gt;black&lt;/span&gt;;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-10" data-line-number="10"&gt;    &lt;span class="kw"&gt;float&lt;/span&gt;:&lt;span class="dv"&gt;left&lt;/span&gt;;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-11" data-line-number="11"&gt;}&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-12" data-line-number="12"&gt;&lt;span class="fu"&gt;.fst&lt;/span&gt; {&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-13" data-line-number="13"&gt;    &lt;span class="kw"&gt;margin&lt;/span&gt;: &lt;span class="dv"&gt;5px&lt;/span&gt; &lt;span class="dv"&gt;0&lt;/span&gt; &lt;span class="dv"&gt;0&lt;/span&gt; &lt;span class="dv"&gt;5px&lt;/span&gt;;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-14" data-line-number="14"&gt;    &lt;span class="kw"&gt;background-color&lt;/span&gt;: &lt;span class="dv"&gt;red&lt;/span&gt;;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-15" data-line-number="15"&gt;}&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-16" data-line-number="16"&gt;&lt;span class="fu"&gt;.snd&lt;/span&gt; {&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-17" data-line-number="17"&gt;    &lt;span class="kw"&gt;background-color&lt;/span&gt;: &lt;span class="dv"&gt;blue&lt;/span&gt;;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-18" data-line-number="18"&gt;}&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-19" data-line-number="19"&gt;&lt;span class="fu"&gt;.example&lt;/span&gt; div&lt;span class="fu"&gt;.thd&lt;/span&gt; {&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-20" data-line-number="20"&gt;    &lt;span class="kw"&gt;background-color&lt;/span&gt;: &lt;span class="dv"&gt;green&lt;/span&gt;;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-21" data-line-number="21"&gt;    &lt;span class="kw"&gt;float&lt;/span&gt;:&lt;span class="dv"&gt;none&lt;/span&gt;;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-22" data-line-number="22"&gt;    &lt;span class="kw"&gt;border&lt;/span&gt;: &lt;span class="dv"&gt;5px&lt;/span&gt; &lt;span class="dv"&gt;solid&lt;/span&gt; &lt;span class="dv"&gt;purple&lt;/span&gt;;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-23" data-line-number="23"&gt;}&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-24" data-line-number="24"&gt;&lt;span class="pp"&gt;#first_ex&lt;/span&gt; div&lt;span class="fu"&gt;.thd&lt;/span&gt; {&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-25" data-line-number="25"&gt;    &lt;span class="kw"&gt;width&lt;/span&gt;: &lt;span class="dv"&gt;50%&lt;/span&gt;;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-26" data-line-number="26"&gt;}&lt;/a&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;And this HTML:&lt;/p&gt;
+&lt;div class="sourceCode" id="cb2"&gt;&lt;pre class="sourceCode html"&gt;&lt;code class="sourceCode html"&gt;&lt;a class="sourceLine" id="cb2-1" data-line-number="1"&gt;&lt;span class="kw"&gt;&amp;lt;div&lt;/span&gt;&lt;span class="ot"&gt; id=&lt;/span&gt;&lt;span class="st"&gt;&amp;quot;first_ex&amp;quot;&lt;/span&gt;&lt;span class="ot"&gt; class=&lt;/span&gt;&lt;span class="st"&gt;&amp;quot;example&amp;quot;&lt;/span&gt;&lt;span class="kw"&gt;&amp;gt;&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-2" data-line-number="2"&gt;    &lt;span class="kw"&gt;&amp;lt;div&lt;/span&gt;&lt;span class="ot"&gt; class=&lt;/span&gt;&lt;span class="st"&gt;&amp;quot;fst&amp;quot;&lt;/span&gt;&lt;span class="kw"&gt;&amp;gt;&lt;/span&gt;First div&lt;span class="kw"&gt;&amp;lt;/div&amp;gt;&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-3" data-line-number="3"&gt;    &lt;span class="kw"&gt;&amp;lt;div&lt;/span&gt;&lt;span class="ot"&gt; class=&lt;/span&gt;&lt;span class="st"&gt;&amp;quot;snd&amp;quot;&lt;/span&gt;&lt;span class="kw"&gt;&amp;gt;&lt;/span&gt;Second div&lt;span class="kw"&gt;&amp;lt;/div&amp;gt;&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-4" data-line-number="4"&gt;    &lt;span class="kw"&gt;&amp;lt;div&lt;/span&gt;&lt;span class="ot"&gt; class=&lt;/span&gt;&lt;span class="st"&gt;&amp;quot;thd&amp;quot;&lt;/span&gt;&lt;span class="kw"&gt;&amp;gt;&lt;/span&gt;This is a third div with some content in here&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-5" data-line-number="5"&gt;    that might wrap around. Still more content. Again more content.&lt;span class="kw"&gt;&amp;lt;/div&amp;gt;&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-6" data-line-number="6"&gt;&lt;span class="kw"&gt;&amp;lt;/div&amp;gt;&lt;/span&gt;&lt;/a&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+We get:
+&lt;div id="first_ex" class="example"&gt;
+&lt;div class="fst"&gt;
+First div
+&lt;/div&gt;
+&lt;div class="snd"&gt;
+Second div
+&lt;/div&gt;
+&lt;div class="thd"&gt;
+This is a third div with some content in here that might wrap around. Still more content. Again more content.
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;p&gt;The first and second divs (&lt;code&gt;.fst&lt;/code&gt; and &lt;code&gt;.snd&lt;/code&gt;) are floating, and placed next to each other on the same line. The third div (&lt;code&gt;.thd&lt;/code&gt;) is &lt;em&gt;not&lt;/em&gt; floating, and participates in layout as though the other divs weren’t there: the outer top and left edges of the third div’s margin box are touching the top-left corner of the content box of the containing element (the &lt;code&gt;.example&lt;/code&gt; div). Note that the border of &lt;code&gt;.thd&lt;/code&gt; is visible in the upper-left corner of the container because &lt;code&gt;.fst&lt;/code&gt; is offset.&lt;/p&gt;
+&lt;p&gt;Because the first/second divs are floating, and because the first words of &lt;code&gt;.thd&lt;/code&gt;’s content are able to fit alongside them, the first line-box of &lt;code&gt;.thd&lt;/code&gt; begins horizontally adjacent to those two, and the content continues below them. According to the &lt;a href="https://www.w3.org/TR/css3-box/"&gt;CSS box model spec&lt;/a&gt;, the third div’s content must lie outside the margins of the first/second div.&lt;/p&gt;
+&lt;p&gt;In contrast, if the third div’s content area is too narrow to accommodate width of the adjacent floats, then the first line-box of &lt;code&gt;.thd&lt;/code&gt; will be shifted down below them.&lt;/p&gt;
+&lt;div id="second_ex" class="example"&gt;
+&lt;div class="fst"&gt;
+First div
+&lt;/div&gt;
+&lt;div class="snd"&gt;
+Second div
+&lt;/div&gt;
+&lt;div class="thd"&gt;
+&lt;p&gt;
+This is a third div with some content in here that might wrap around. Still more content. Again more content.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;p&gt;The relevant quote from the spec is:&lt;/p&gt;
+&lt;blockquote&gt;
+[L]ine boxes created next to the float are shortened to make room for the margin box of the float. If a shortened line box is too small to contain any further content, then it is shifted downward until either it fits or there are no more floats present.
+&lt;footer&gt;
+&lt;cite title="CSS basic box model"&gt;CSS basic box model&lt;/cite&gt; specification
+&lt;/footer&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;Check out this &lt;a href="http://jsfiddle.net/drewbarbs/kUV9j/5/"&gt;fiddle&lt;/a&gt; if you would like to play around with the examples.&lt;/p&gt;
+</content><category term="webdev"></category></entry><entry><title>Obligatory New Blog Post</title><link href="https://dbarbs.net/posts/2014/02/obligatory-new-blog-post/" rel="alternate"></link><published>2014-02-04T00:00:00-05:00</published><updated>2014-02-04T00:00:00-05:00</updated><author><name>Andrew Barbarello</name></author><id>tag:dbarbs.net,2014-02-04:/posts/2014/02/obligatory-new-blog-post/</id><summary type="html">&lt;blockquote class="twitter-tweet" lang="en"&gt;
+&lt;p&gt;
+99% of programming is choosing a templating language and the rest is explaining your decision in a blog post.
+&lt;/p&gt;
+— Hacker News Onion (&lt;strong&gt;???&lt;/strong&gt;) &lt;a href="https://twitter.com/HackerNewsOnion/statuses/364553850184675328"&gt;August 6, 2013&lt;/a&gt;
+&lt;/blockquote&gt;
+&lt;script async src="//platform.twitter.com/widgets.js" charset="utf-8"&gt;&lt;/script&gt;
+&lt;p&gt;I chose Jinja2 via &lt;a href="http://docs.getpelican.com/en/3.3.0/"&gt;Pelican&lt;/a&gt;. This blog replaces an old one I wrote in PHP and never maintained.&lt;/p&gt;
+&lt;p&gt;I found &lt;a href="http://terriyu.info/blog/posts/2013/07/pelican-setup/"&gt;this tutorial&lt;/a&gt; and &lt;a href="http://raichev.net/blohg-to-pelican.html"&gt;this blog …&lt;/a&gt;&lt;/p&gt;</summary><content type="html">&lt;blockquote class="twitter-tweet" lang="en"&gt;
+&lt;p&gt;
+99% of programming is choosing a templating language and the rest is explaining your decision in a blog post.
+&lt;/p&gt;
+— Hacker News Onion (&lt;strong&gt;???&lt;/strong&gt;) &lt;a href="https://twitter.com/HackerNewsOnion/statuses/364553850184675328"&gt;August 6, 2013&lt;/a&gt;
+&lt;/blockquote&gt;
+&lt;script async src="//platform.twitter.com/widgets.js" charset="utf-8"&gt;&lt;/script&gt;
+&lt;p&gt;I chose Jinja2 via &lt;a href="http://docs.getpelican.com/en/3.3.0/"&gt;Pelican&lt;/a&gt;. This blog replaces an old one I wrote in PHP and never maintained.&lt;/p&gt;
+&lt;p&gt;I found &lt;a href="http://terriyu.info/blog/posts/2013/07/pelican-setup/"&gt;this tutorial&lt;/a&gt; and &lt;a href="http://raichev.net/blohg-to-pelican.html"&gt;this blog&lt;/a&gt; extraordinarily helpful for setting up my new blog. &lt;a href="https://github.com/getpelican/pelican-themes/tree/master/pelican-bootstrap3"&gt;This one&lt;/a&gt; for the finishing touches.&lt;/p&gt;
+&lt;p&gt;Here is some math: &lt;span class="math inline"&gt;\(e = mc^2\)&lt;/span&gt;.&lt;/p&gt;
+&lt;p&gt;Here is some code&lt;/p&gt;
+&lt;div class="sourceCode" id="cb1"&gt;&lt;pre class="sourceCode python"&gt;&lt;code class="sourceCode python"&gt;&lt;a class="sourceLine" id="cb1-1" data-line-number="1"&gt;l &lt;span class="op"&gt;=&lt;/span&gt; [&lt;span class="dv"&gt;1&lt;/span&gt;, &lt;span class="dv"&gt;2&lt;/span&gt;, &lt;span class="dv"&gt;3&lt;/span&gt;]&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-2" data-line-number="2"&gt;l.sort()&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-3" data-line-number="3"&gt;&lt;span class="cf"&gt;assert&lt;/span&gt; l &lt;span class="op"&gt;==&lt;/span&gt; [&lt;span class="dv"&gt;1&lt;/span&gt;, &lt;span class="dv"&gt;2&lt;/span&gt;, &lt;span class="dv"&gt;3&lt;/span&gt;]&lt;/a&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+</content><category term="misc"></category></entry></feed>

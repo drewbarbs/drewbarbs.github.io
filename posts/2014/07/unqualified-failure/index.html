@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+    <title>Drew Barbarello's Blog</title>
+    <link rel="stylesheet" href="https://dbarbs.net/theme/css/main.css" />
+    <link href="https://dbarbs.net/theme/css/font-awesome.min.css" rel="stylesheet"/>
+    <link href="https://dbarbs.net/theme/css/skylighting.css" rel="stylesheet">
+    <script type="text/javascript" async
+            src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.2/MathJax.js?config=TeX-MML-AM_CHTML">
+    </script>
+    <link rel="icon" type="image/gif" href="/favicon.gif"/>
+
+    <link href="https://dbarbs.net/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="Drew Barbarello's Blog Atom Feed" />
+
+
+  </head>
+
+  <body id="index" class="home">
+    <header id="banner" class="body">
+      <h1><a href="https://dbarbs.net">Drew Barbarello's Blog <strong></strong></a></h1>
+      <nav id="menu"><ul>
+          <li><a href="https://dbarbs.net/">Home</a></li>
+            <li><a href="https://dbarbs.net/pages/about.html">About</a></li>
+          <li><a href="https://dbarbs.net/archives.html">Archive</a></li>
+      </ul></nav><!-- /#menu -->
+
+    </header><!-- /#banner -->
+    <div id="wrap">
+
+    <input type="checkbox" id="width_sidebar">
+    <label for="width_sidebar"><span>hide the sidebar</span></label>
+
+    <section id="content">
+  <article class="hentry">
+    <header>
+      <h1 class="entry-title">
+        Unqualified failure
+      </h1>
+      <time class="published" datetime="2014-07-20T00:00:00-04:00">Sun, 20 July 2014</time>
+      
+    </header>
+    <div class="entry-content">
+      <p>It turns out that <code>#include</code>ing iostream can get you a <a href="http://stackoverflow.com/questions/9725447/why-does-iostream-define-an-abs-function-and-how-can-i-stop-it">bonus abs function</a>. That is, the following won’t compile in GCC (4.8) or Clang (3.4):</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb1-1" data-line-number="1"><span class="dt">int</span> main() {</a>
+<a class="sourceLine" id="cb1-2" data-line-number="2"> abs(<span class="dv">-4</span><span class="fl">.8</span>);</a>
+<a class="sourceLine" id="cb1-3" data-line-number="3"> <span class="cf">return</span> <span class="dv">0</span>;</a>
+<a class="sourceLine" id="cb1-4" data-line-number="4">}</a></code></pre></div>
+<p>but the following will (on my machine), <strong>if</strong> (and only if) compiled with <code>-std=c++11</code>:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb2-1" data-line-number="1"><span class="pp">#include </span><span class="im">&lt;iostream&gt;</span><span class="pp"> </span><span class="co">// BAM!</span></a>
+<a class="sourceLine" id="cb2-2" data-line-number="2"><span class="dt">int</span> main() {</a>
+<a class="sourceLine" id="cb2-3" data-line-number="3"> abs(<span class="dv">-4</span><span class="fl">.8</span>); <span class="co">// Evaluates to 4!</span></a>
+<a class="sourceLine" id="cb2-4" data-line-number="4"> <span class="cf">return</span> <span class="dv">0</span>;</a>
+<a class="sourceLine" id="cb2-5" data-line-number="5">}</a></code></pre></div>
+<p>A compiler’s implementation of <code>&lt;iostream&gt;</code> may depend on (and include) <code>&lt;cstdlib&gt;</code>, and there’s a <a href="http://stackoverflow.com/a/10445657/756104">bit</a> in the standard that explicitly allows implementations to import C standard library functions into the global namespace in addition to making them available in namespace <code>std</code>. In this case, the following declaration is introduced when including <code>&lt;iostream&gt;</code>:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><a class="sourceLine" id="cb3-1" data-line-number="1"><span class="co">/* Return the absolute value of X.  */</span></a>
+<a class="sourceLine" id="cb3-2" data-line-number="2"><span class="kw">extern</span> <span class="dt">int</span> abs (<span class="dt">int</span> __x) __THROW __attribute__ ((__const__)) __wur;</a></code></pre></div>
+<p><em>Only</em> this declaration of <code>abs</code> is made available, so <code>abs(-4.8)</code> compiles without so much as a warning with GCC (Clang gives a warning about the implicit conversion of the argument to <code>int</code>). If the call is qualified (<code>std::abs</code>), the code fails to compile as other declarations (for <code>long</code> and <code>long long</code>) are available in namespace <code>std</code>.</p>
+<h2 id="subtle-bugs">Subtle Bugs</h2>
+<p>A while back, I wrote a <a href="https://github.com/abarbs/class-raytracer">ray tracer</a> for a computer graphics class assignment, and came across a rendering bug visible when using any compiler other than MSVC. For my first non-trivial C++ program, I was amazed things would render correctly using <em>any</em> compiler, so I just continued along with MSVC until the assignment was submitted.</p>
+<p>A couple of renders as produced by the program compiled with MSVC (the way they were supposed to look):</p>
+<p><img src="/img/2014-07-20-model1.jpg" height="300px"/> <img src="/img/2014-07-20-model2.jpg" height="300px"/></p>
+<p>and those same scenes rendered by the ray tracer compiled with GCC 4.8:</p>
+<p><img src="/img/2014-07-20-old_model1.jpg" height="300px"/> <img src="/img/2014-07-20-old_model2.jpg" height="300px"/></p>
+<p>Not <em>too</em> far off, but no good. The first scene is particularly glitchy, and in the second you can notice some weirdness with the red cylinder.</p>
+<p>Looking into it a while after the fact, I found that the issue came down to a couple member functions of <code>QuadricCollection</code> (an instance of this class is an object defined by the intersection of quadrics):</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode numberSource cpp numberLines"><code class="sourceCode cpp"><a class="sourceLine" id="cb4-1" data-line-number="1"><span class="dt">bool</span> onSurface(<span class="at">const</span> Eigen::Vector4d &amp;pt) {</a>
+<a class="sourceLine" id="cb4-2" data-line-number="2">    <span class="dt">bool</span> onBoundary = <span class="kw">false</span>;</a>
+<a class="sourceLine" id="cb4-3" data-line-number="3">    <span class="dt">double</span> distToSurface;</a>
+<a class="sourceLine" id="cb4-4" data-line-number="4">    <span class="cf">for</span> (<span class="dt">unsigned</span> <span class="dt">int</span> i = <span class="dv">0</span>; i &lt; quadrics.size(); ++i) {</a>
+<a class="sourceLine" id="cb4-5" data-line-number="5">        Eigen::Matrix4d &amp;Q = quadrics[i];</a>
+<a class="sourceLine" id="cb4-6" data-line-number="6">        <span class="cf">if</span> ((distToSurface = pt.transpose() * Q * pt) &gt; EPSILON)</a>
+<a class="sourceLine" id="cb4-7" data-line-number="7">            <span class="cf">return</span> <span class="kw">false</span>; <span class="co">// pt not in intersection of all quadrics</span></a>
+<a class="sourceLine" id="cb4-8" data-line-number="8">        <span class="cf">else</span> <span class="cf">if</span> (abs(distToSurface) &lt; EPSILON)</a>
+<a class="sourceLine" id="cb4-9" data-line-number="9">            onBoundary = <span class="kw">true</span>; <span class="co">// pt on boundary of at least one quadric</span></a>
+<a class="sourceLine" id="cb4-10" data-line-number="10">    }</a>
+<a class="sourceLine" id="cb4-11" data-line-number="11">    <span class="cf">return</span> onBoundary;</a>
+<a class="sourceLine" id="cb4-12" data-line-number="12">}</a>
+<a class="sourceLine" id="cb4-13" data-line-number="13"></a>
+<a class="sourceLine" id="cb4-14" data-line-number="14"><span class="kw">virtual</span> Eigen::Vector4d getUnitNormal(<span class="at">const</span> Eigen::Vector4d &amp;point) {</a>
+<a class="sourceLine" id="cb4-15" data-line-number="15">    <span class="ex">BOOST_</span>ASSERT_MSG(point[<span class="dv">3</span>] == <span class="dv">1</span>, <span class="st">&quot;getNormal needs a homogeneous point!&quot;</span>);</a>
+<a class="sourceLine" id="cb4-16" data-line-number="16">    <span class="ex">BOOST_</span>ASSERT_MSG(onSurface(point), <span class="st">&quot;Asked for normal at point not on surface!&quot;</span>);</a>
+<a class="sourceLine" id="cb4-17" data-line-number="17">    <span class="cf">for</span> (<span class="dt">unsigned</span> <span class="dt">int</span> i = <span class="dv">0</span>; i &lt; quadrics.size(); ++i) {</a>
+<a class="sourceLine" id="cb4-18" data-line-number="18">        Eigen::Matrix4d &amp;Q = quadrics[i];</a>
+<a class="sourceLine" id="cb4-19" data-line-number="19">        <span class="dt">double</span> d = point.transpose() * Q * point;</a>
+<a class="sourceLine" id="cb4-20" data-line-number="20">        <span class="cf">if</span> (abs(d) &lt; EPSILON) {</a>
+<a class="sourceLine" id="cb4-21" data-line-number="21">            <span class="co">// Point is on the surface of the quadric Q</span></a>
+<a class="sourceLine" id="cb4-22" data-line-number="22">            <span class="cf">return</span> (<span class="dv">2</span> * Q * point).cwiseProduct(Eigen::Vector4d(<span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">0</span>)).normalized();</a>
+<a class="sourceLine" id="cb4-23" data-line-number="23">        }</a>
+<a class="sourceLine" id="cb4-24" data-line-number="24">    }</a>
+<a class="sourceLine" id="cb4-25" data-line-number="25">}</a></code></pre></div>
+<p>The use of the unqualified <code>abs</code> function (lines 8 and 20) opens this code up to inconsistency across implementations. It just so happens that with MSVC 2010, the <code>abs</code> that is resolved <em>does</em> operate on floating points, and everything renders fine using that compiler.</p>
+
+    </div><!-- /.entry-content -->
+
+    <section class="comments">
+      <h2>Comments</h2>
+      <div id="disqus_thread"></div>
+      <script type="text/javascript">
+        var disqus_identifier = "posts/2014/07/unqualified-failure/";
+        var disqus_url = "https://dbarbs.net/posts/2014/07/unqualified-failure/";
+        (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'http://dbarbs.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+        })();
+      </script>
+    </section> <!-- /.comments -->
+  </article>
+    </section><!-- /#content -->
+<aside id="sidebar">
+    <section>
+    <h1>Social</h1>
+      <ul id="social">
+        <li><a href="https://www.facebook.com/andrew.barbarello"><i
+                                                            class="fa fa-facebook-square fa-lg"></i>facebook</a></li>
+        <li><a href="https://twitter.com/_dbarbs"><i
+                                                            class="fa fa-twitter-square fa-lg"></i>twitter</a></li>
+      </ul>
+    </section>
+
+    <section><h1>Recent Posts</h1>
+      <ul id="recentposts">
+        <li>
+          <a href="https://dbarbs.net/posts/2017/01/grokking-bezier-curves/">Grokking Bézier Curves</a>
+        </li>
+        <li>
+          <a href="https://dbarbs.net/posts/2014/07/unqualified-failure/">Unqualified failure</a>
+        </li>
+        <li>
+          <a href="https://dbarbs.net/posts/2014/02/installing-clover-os-x-and-linux-mint/">Installing Clover, OS X, and Linux Mint</a>
+        </li>
+        <li>
+          <a href="https://dbarbs.net/posts/2014/02/understanding-the-css-box-model-and-floats/">Understanding the CSS box model and floats</a>
+        </li>
+        <li>
+          <a href="https://dbarbs.net/posts/2014/02/obligatory-new-blog-post/">Obligatory New Blog Post</a>
+        </li>
+      </ul>
+    </section>
+
+
+
+    <section>
+      <h1>GitHub Repos</h1>
+        <div id="gh_repos">
+            <p class="loading-status">Status updating...</p>
+        </div>
+    </section>
+</aside>    </div>
+    <footer id="contentinfo" class="body">
+      <address id="about" class="vcard body">
+        Proudly powered by <a href="http://getpelican.com/">Pelican</a>,
+        which takes great advantage of <a href="http://python.org">Python</a>.
+      </address><!-- /#about -->
+    </footer><!-- /#contentinfo -->
+    <script src="https://dbarbs.net/theme/js/github.js" type="text/javascript"></script>
+    <script>
+            github.showRepos({
+                user: 'drewbarbs',
+                count: 5,
+                skip_forks: true,
+                target: 'gh_repos' //id of the target div
+            });
+    </script>
+    
+    <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-34028465-1']);
+    _gaq.push(['_trackPageview']);
+    (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+    </script>
+  </body>
+</html>

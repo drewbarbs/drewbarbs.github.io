@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Drew Barbarello's Blog</title>
+    <link rel="stylesheet" href="https://dbarbs.net/theme/css/main.css" />
+    <link href="https://dbarbs.net/theme/css/font-awesome.min.css" rel="stylesheet"/>
+    <link href="https://dbarbs.net/theme/css/skylighting.css" rel="stylesheet">
+    <script type="text/javascript" async
+            src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.2/MathJax.js?config=TeX-MML-AM_CHTML">
+    </script>
+    <link rel="icon" type="image/gif" href="/favicon.gif"/>
+
+    <link href="https://dbarbs.net/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="Drew Barbarello's Blog Atom Feed" />
+
+  </head>
+
+  <body id="index" class="home">
+    <header id="banner" class="body">
+      <h1><a href="https://dbarbs.net">Drew Barbarello's Blog <strong></strong></a></h1>
+      <nav id="menu"><ul>
+          <li><a href="https://dbarbs.net/">Home</a></li>
+            <li><a href="https://dbarbs.net/pages/about.html">About</a></li>
+          <li><a href="https://dbarbs.net/archives.html">Archive</a></li>
+      </ul></nav><!-- /#menu -->
+
+    </header><!-- /#banner -->
+    <div id="wrap">
+
+    <input type="checkbox" id="width_sidebar">
+    <label for="width_sidebar"><span>hide the sidebar</span></label>
+
+    <section id="content">
+<h2>Articles in the misc category</h2>
+
+  <article class="hentry">
+    <header> 
+      <abbr class="published" title="2017-01-29T00:00:00-05:00"> Sun, 29 January 2017 </abbr>
+      <h1 class="entry-title"><a href="https://dbarbs.net/posts/2017/01/grokking-bezier-curves/" rel="bookmark" title="Permalink to Grokking Bézier Curves">Grokking Bézier Curves</a></h1> 
+    </header>
+    <div class="entry-content"> <p>Yet another visualization of Bézier curves using De Casteljau's algorithm.</p> </div><!-- /.entry-content -->
+    
+    <footer class="post-info">
+      <a class="readmore" rel="full-article" href="https://dbarbs.net/posts/2017/01/grokking-bezier-curves/">Full Post</a>
+      
+    </footer><!-- /.post-info -->
+    
+  </article>
+  <article class="hentry">
+    <header> 
+      <abbr class="published" title="2014-07-20T00:00:00-04:00"> Sun, 20 July 2014 </abbr>
+      <h1 class="entry-title"><a href="https://dbarbs.net/posts/2014/07/unqualified-failure/" rel="bookmark" title="Permalink to Unqualified failure">Unqualified failure</a></h1> 
+    </header>
+    <div class="entry-content"> <p>It turns out that <code>#include</code>ing iostream can get you a <a href="http://stackoverflow.com/questions/9725447/why-does-iostream-define-an-abs-function-and-how-can-i-stop-it">bonus abs function</a>. That is, the following won’t compile in GCC (4.8) or Clang (3.4):</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode cpp"><code class="sourceCode cpp"><a class="sourceLine" id="cb1-1" data-line-number="1"><span class="dt">int</span> main() {</a>
+<a class="sourceLine" id="cb1-2" data-line-number="2"> abs(<span class="dv">-4</span><span class="fl">.8</span>);</a>
+<a class="sourceLine" id="cb1-3" data-line-number="3"> <span class="cf">return</span> <span class="dv">0</span>;</a>
+<a class="sourceLine" id="cb1-4" data-line-number="4">}</a></code></pre></div>
+<p>but the following will (on my machine), <strong>if</strong> (and only if) compiled with <code>-std …</code></p> </div><!-- /.entry-content -->
+    
+    <footer class="post-info">
+      <a class="readmore" rel="full-article" href="https://dbarbs.net/posts/2014/07/unqualified-failure/">Full Post</a>
+      
+    </footer><!-- /.post-info -->
+    
+  </article>
+  <article class="hentry">
+    <header> 
+      <abbr class="published" title="2014-02-17T00:00:00-05:00"> Mon, 17 February 2014 </abbr>
+      <h1 class="entry-title"><a href="https://dbarbs.net/posts/2014/02/installing-clover-os-x-and-linux-mint/" rel="bookmark" title="Permalink to Installing Clover, OS X, and Linux Mint">Installing Clover, OS X, and Linux Mint</a></h1> 
+    </header>
+    <div class="entry-content"> <div class="bs-callout bs-callout-warning" data-markdown="1">
+<h4 id="warning">Warning</h4>
+<p>This post is from a different time, when <a href="http://www.unibeast.com/">Unibeast</a> only offered the Chameleon/Chimera (MBR) bootloaders, and you had to <a href="https://www.reddit.com/r/hackintosh/comments/2rwub6/unibeast_vs_clover/">choose</a> between convenience and Clover. Now, I’d recommend just using latest Unibeast tutorial. Depending on your motherboard, you may still need to PMPatch your bios as described below …</p></div> </div><!-- /.entry-content -->
+    
+    <footer class="post-info">
+      <a class="readmore" rel="full-article" href="https://dbarbs.net/posts/2014/02/installing-clover-os-x-and-linux-mint/">Full Post</a>
+      
+    </footer><!-- /.post-info -->
+    
+  </article>
+  <article class="hentry">
+    <header> 
+      <abbr class="published" title="2014-02-07T00:00:00-05:00"> Fri, 07 February 2014 </abbr>
+      <h1 class="entry-title"><a href="https://dbarbs.net/posts/2014/02/understanding-the-css-box-model-and-floats/" rel="bookmark" title="Permalink to Understanding the CSS box model and floats">Understanding the CSS box model and floats</a></h1> 
+    </header>
+    <div class="entry-content"> 
+<p>I went with the standard two-column layout for this site: content and sidebar. I wanted the columns to have “fluid width”, equal height, and different background colors, so I referenced <a href="http://css-tricks.com/fluid-width-equal-height-columns/">this article</a> and used the &quot; <a href="http://nicolasgallagher.com/multiple-backgrounds-and-borders-with-css2/demo/backgrounds.html#faux">Nicholas Gallagher method</a>&quot; to implement it.</p>
+<p>I recommend checking out the Gallagher method <a href="http://css-tricks.com/fluid-width-equal-height-columns/">example</a> at …</p> </div><!-- /.entry-content -->
+    
+    <footer class="post-info">
+      <a class="readmore" rel="full-article" href="https://dbarbs.net/posts/2014/02/understanding-the-css-box-model-and-floats/">Full Post</a>
+      
+    </footer><!-- /.post-info -->
+    
+  </article>
+  <article class="hentry">
+    <header> 
+      <abbr class="published" title="2014-02-04T00:00:00-05:00"> Tue, 04 February 2014 </abbr>
+      <h1 class="entry-title"><a href="https://dbarbs.net/posts/2014/02/obligatory-new-blog-post/" rel="bookmark" title="Permalink to Obligatory New Blog Post">Obligatory New Blog Post</a></h1> 
+    </header>
+    <div class="entry-content"> <blockquote class="twitter-tweet" lang="en">
+<p>
+99% of programming is choosing a templating language and the rest is explaining your decision in a blog post.
+</p>
+— Hacker News Onion (<strong>???</strong>) <a href="https://twitter.com/HackerNewsOnion/statuses/364553850184675328">August 6, 2013</a>
+</blockquote>
+<script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
+<p>I chose Jinja2 via <a href="http://docs.getpelican.com/en/3.3.0/">Pelican</a>. This blog replaces an old one I wrote in PHP and never maintained.</p>
+<p>I found <a href="http://terriyu.info/blog/posts/2013/07/pelican-setup/">this tutorial</a> and <a href="http://raichev.net/blohg-to-pelican.html">this blog …</a></p> </div><!-- /.entry-content -->
+    
+    <footer class="post-info">
+      <a class="readmore" rel="full-article" href="https://dbarbs.net/posts/2014/02/obligatory-new-blog-post/">Full Post</a>
+      
+    </footer><!-- /.post-info -->
+    
+  </article>
+
+    </section><!-- /#content -->
+<aside id="sidebar">
+    <section>
+    <h1>Social</h1>
+      <ul id="social">
+        <li><a href="https://www.facebook.com/andrew.barbarello"><i
+                                                            class="fa fa-facebook-square fa-lg"></i>facebook</a></li>
+        <li><a href="https://twitter.com/_dbarbs"><i
+                                                            class="fa fa-twitter-square fa-lg"></i>twitter</a></li>
+      </ul>
+    </section>
+
+    <section><h1>Recent Posts</h1>
+      <ul id="recentposts">
+        <li>
+          <a href="https://dbarbs.net/posts/2017/01/grokking-bezier-curves/">Grokking Bézier Curves</a>
+        </li>
+        <li>
+          <a href="https://dbarbs.net/posts/2014/07/unqualified-failure/">Unqualified failure</a>
+        </li>
+        <li>
+          <a href="https://dbarbs.net/posts/2014/02/installing-clover-os-x-and-linux-mint/">Installing Clover, OS X, and Linux Mint</a>
+        </li>
+        <li>
+          <a href="https://dbarbs.net/posts/2014/02/understanding-the-css-box-model-and-floats/">Understanding the CSS box model and floats</a>
+        </li>
+        <li>
+          <a href="https://dbarbs.net/posts/2014/02/obligatory-new-blog-post/">Obligatory New Blog Post</a>
+        </li>
+      </ul>
+    </section>
+
+
+
+    <section>
+      <h1>GitHub Repos</h1>
+        <div id="gh_repos">
+            <p class="loading-status">Status updating...</p>
+        </div>
+    </section>
+</aside>    </div>
+    <footer id="contentinfo" class="body">
+      <address id="about" class="vcard body">
+        Proudly powered by <a href="http://getpelican.com/">Pelican</a>,
+        which takes great advantage of <a href="http://python.org">Python</a>.
+      </address><!-- /#about -->
+    </footer><!-- /#contentinfo -->
+    <script src="https://dbarbs.net/theme/js/github.js" type="text/javascript"></script>
+    <script>
+            github.showRepos({
+                user: 'drewbarbs',
+                count: 5,
+                skip_forks: true,
+                target: 'gh_repos' //id of the target div
+            });
+    </script>
+    
+    <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-34028465-1']);
+    _gaq.push(['_trackPageview']);
+    (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+    </script>
+<script type="text/javascript">
+    var disqus_shortname = 'dbarbs';
+    (function () {
+        var s = document.createElement('script'); s.async = true;
+        s.type = 'text/javascript';
+        s.src = 'http://' + disqus_shortname + '.disqus.com/count.js';
+        (document.getElementsByTagName('HEAD')[0] || document.getElementsByTagName('BODY')[0]).appendChild(s);
+    }());
+</script>
+  </body>
+</html>

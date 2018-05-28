@@ -1,0 +1,748 @@
+@CHARSET "UTF-8";
+
+@import url('https://fonts.googleapis.com/css?family=Lato:400,700,400italic');
+@import url('https://fonts.googleapis.com/css?family=Noto+Serif');
+
+/* Reset */
+* {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box; }
+
+/* General */
+ul {
+    list-style-type: disc;
+    list-style-position: inside;
+}
+
+ul ul {
+    padding-left:25px;
+    list-style-type: circle;
+}
+
+ul ul ul {
+    list-style-type: square;
+}
+
+li {
+    padding: 0.5em 0;
+}
+
+pre {
+    overflow: auto;
+}
+
+h1 {
+    font-size:2.25em;
+    text-transform: capitalize;
+    -webkit-font-smoothing: antialiased;
+}
+
+p {
+    line-height: 1.30em;
+}
+
+blockquote {
+  background: #fbfbfb;
+  border-left: 10px solid #ccc;
+  margin: 1.5em 10px;
+  padding: 0.5em 10px;
+}
+blockquote:before {
+  color: #ccc;
+  font-size: 4em;
+  line-height: 0.1em;
+  margin-right: 0.25em;
+  vertical-align: -0.4em;
+}
+blockquote p {
+  display: inline;
+}
+
+blockquote .small, blockquote footer, blockquote small {
+    display: block;
+    font-size: 90%;
+    line-height: 1.42857143;
+    color: #777;
+}
+
+blockquote .small:before, blockquote footer:before, blockquote small:before {
+    content: '\2014 \00A0';
+}
+
+#banner h1, h1.entry-title, #sidebar h1  {
+    margin-bottom: 0;
+}
+
+body {
+    border-top: 190px solid #0063A6;
+    background-color: white;
+    font-family: 'Lato', Helvetica, Arial, sans-serif;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+article p, article li {
+    font-family: 'Noto Serif', serif;
+    font-size: .95em;
+}
+
+#footnotes {
+    font-size: 1.5em;
+}
+
+#sidebar a:link, #sidebar a:visited {
+    color: rgb(65, 65, 65);
+}
+
+a:link, a:visited {
+    color: #0090D2;
+    text-decoration: none;
+}
+
+article a:hover, article a:active {
+    color: rgb(0,99,166);
+}
+
+#sidebar a:hover, #sidebar a:active {
+    color: rgb(0,99,166);
+}
+
+/* Github repo descriptions */
+#sidebar #github p { margin: 0; color: gray;  padding: 0 0 0.5em 0; line-height: 1;}
+
+aside a:active, article a:active {
+    position:relative;
+    top: 1px;
+}
+
+a {
+    transition: color 0.3s ease 0s;
+}
+
+/*  Header Styles
+
+    Header is 190px large, where the nav bar is 40px large and h1 is
+    150px large (60px padding top and bottom + 30px h1)
+*/
+
+#banner {
+    /* siteHeader is distinguished from <header>s in (say) articles */
+    margin: -190px 0 0 0;
+    height: 190px;
+    width: 100%;
+    color: white;
+}
+
+#banner  h1 {
+    height: 150px;
+    padding: 60px 0;
+    font-weight: normal;
+    font-size: 28px;
+}
+
+#banner h1 a {
+    text-decoration: none;
+    color: white;
+}
+
+#banner h1 a:active {
+    position: relative;
+    top: 1px;
+}
+
+/* Nav Styles */
+nav#menu {
+    /* height of the nav bar is determined by the <a>'s line height */
+    display: block;
+    background: #0090D2;
+    -moz-box-shadow: 0 0 10px -2px rgba(0, 0, 0, 0.3);
+    -webkit-box-shadow: 0 0 10px -2px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 0 10px -2px rgba(0, 0, 0, 0.3);
+    border-bottom-right-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+nav#menu ul li {
+    display: inline-block;
+    text-align:center;
+    padding: 0;
+}
+
+nav#menu a, nav#menu a:visited {
+    line-height: 40px;
+    color: white;
+    font-size: 14px;
+    font-weight:normal;
+    font-style: normal;
+    text-decoration: none;
+    padding: 10px 20px;
+}
+
+nav#menu a:hover {
+    color: yellow;
+}
+
+nav#menu a:active {
+    position: relative;
+    top: 1px;
+}
+
+@media only screen and (max-width: 768px) {
+    nav#menu li {
+        display: inline;
+        width: 32.5%;
+    }
+    nav#menu a {
+        display: inline-block;
+        padding: 0;
+        width: 100%;
+    }
+}
+
+/* Footer styles */
+footer#contentinfo {
+    margin-top: 17px;
+    padding-top: 17px;
+    border-top: 1px solid rgb(238, 238, 238);
+}
+
+/* Articles Styles */
+
+#content {
+    background-color: white;
+    width: 80%;
+    border-right: 1px solid #ddd;
+    float: left;
+}
+
+article.hentry {
+
+}
+
+/* Put a horizontal border and 6em between foot of one article and header of another */
+
+article.hentry + article.hentry {
+    padding-top: 3em;
+    border-top: 1px solid rgb(238, 238, 238);
+}
+
+article.hentry, div.page {
+    padding: 0 1em 0 1em;
+    margin-bottom: 3em;
+}
+
+#content, #sidebar {
+    padding-top: 3em;
+}
+
+.entry-content {
+    padding: 2em 0.5em 2em 0.5em;
+}
+
+.entry-content > * {
+    margin-bottom: 1.05em;
+}
+
+.entry-content *:last-child {
+    margin-bottom: 0;
+}
+
+time.published {
+    font-size: 0.9em;
+}
+
+.published {
+    color: #888;
+}
+
+.entry-title a:link, .entry-title a:visited {
+    color:black;
+}
+
+.entry-title a:hover, .entry-title a:active {
+    color: #901;
+    top:0;
+}
+
+/* Pagination styles */
+.pagination {
+    height: 36px;
+    margin: 18px 0px;
+}
+
+.pagination ul {
+    float: left;
+    margin: 0px;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 3px;
+    box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.pagination li {
+    display: inline;
+}
+
+.pagination a {
+    float: left;
+    padding: 0px 14px;
+    line-height: 34px;
+    border-right: 1px solid rgba(0, 0, 0, 0.15);
+    text-decoration: none;
+}
+
+.pagination .disabled a, .pagination .disabled a:hover {
+    background-color: transparent;
+    color: rgb(191, 191, 191);
+}
+
+.pagination a:hover, .pagination .active a {
+    background-color: rgb(199, 238, 254);
+}
+
+.pagination .next a {
+    border: 0px none;
+}
+
+#content .hentry a[rel="full-article"] {
+    background: none repeat scroll 0% 0% rgb(235, 235, 235);
+    display: inline-block;
+    padding: 0.4em 0.8em;
+    margin-right: 0.5em;
+    text-decoration: none;
+    color: rgb(102, 102, 102);
+    transition: background-color 0.5s ease 0s;
+}
+
+#content .hentry a[rel="full-article"]:hover {
+    background: none repeat scroll 0% 0% rgb(1, 129, 235);
+    text-shadow: none;
+    color: rgb(248, 248, 248);
+}
+
+.clearfix::after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+#sidebar {
+    width: 18%;
+    float: left;
+    background-color: whitesmoke;
+    -ms-word-break: break-all;
+    word-break: break-all;
+    word-break: break-word;
+    -webkit-hyphens: auto;
+    -moz-hyphens: auto;
+    -ms-hyphens: auto;
+    hyphens: auto;
+    font-size: 1em;
+}
+
+#sidebar section {
+    margin-bottom: 1em;
+}
+
+#sidebar section ul {
+    list-style-type: none;
+}
+
+#sidebar section li {
+    border-bottom: 1px solid rgb(224, 224, 224);
+    padding: 0;
+}
+
+#sidebar section li:nth-last-child(1) {
+    border-bottom: none;
+}
+
+#sidebar section > h1 {
+    font-size: 1.175em;
+    border-bottom: 1px solid rgb(224, 224, 224);
+}
+
+#sidebar a {
+    word-wrap: break-word;
+    white-space: pre-wrap;
+    padding: 0.5em 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+#sidebar i.fa {
+    margin-right: 10px;
+}
+
+.year-articles {
+    margin-top: 2em;
+}
+
+.month-articles {
+    list-style: none;
+    margin: 0 0 2em 2.5em;
+}
+
+.month-articles > li {
+    color: rgb(128, 128, 128);
+}
+
+.month-articles > li > a {
+    margin-left: 0.5em;
+}
+
+html::before {
+    content: " ";
+    /*
+       Absolute positioning establishes new block, so width and height
+       properties are respected (by default the ::before and ::after
+       pseudo-elements are display: inline). Also, the absolute
+       positioning removes this pseudo element from document flow,
+       so this element is essentially a 190px tall, full width underlay
+       at the very top of the page.
+    */
+    position: absolute;
+    z-index: -1;
+    width: 100%;
+    height: 190px;
+    background: #0063A6;
+}
+
+div#wrap {
+    position: relative;
+    overflow: hidden; /* Desired side effect: Starts a new BFC,
+                         forces the div to expand to contain the
+                         floated content */
+}
+
+/*
+   Make a colored column the same height as the wrap, as per
+   the ``Nicolas Gallagher'' method
+   http://css-tricks.com/fluid-width-equal-height-columns/
+*/
+div#wrap::after {
+    content: " ";
+    position: absolute;
+    background-color: whitesmoke;
+    top: 0;
+    height: 100%;
+    width: 20%; /* same width as the sidebar */
+    left: 80%;  /* same width as the content */
+    z-index: -1;
+}
+
+/*
+   Style ripped off from Chris Coyier's CSS-tricks
+   http://css-tricks.com/
+*/
+
+p>code, li>code, dd>code, td>code {
+    background: #eee;
+    padding: 2px 4px 1px;
+    border-radius: 4px;
+    box-shadow: 1px 1px 1px rgba(0,0,0,0.4);
+    position: relative;
+    top: -1px;
+    margin: 0 3px 0 1px;
+    font-size: 90%;
+}
+
+@media only screen and (max-width: 992px) {
+    body {
+        font-size: 1em;
+    }
+}
+
+@media only screen and (min-width: 993px) {
+    body {
+        font-size: 1.1em;
+    }
+}
+
+@media only screen and (max-width: 768px) {
+
+    #content {
+        width: 100%;
+        border-right: none;
+    }
+
+    #sidebar {
+        width: 100%;
+        padding-top: 1.5em;
+        padding-left: 1%;
+        padding-right: 1%;
+    }
+
+}
+
+@media only screen and (min-width: 769px) {
+    #sidebar {
+        margin-left: 1%;
+        margin-right: 1%;
+    }
+}
+
+@media only screen and (max-width: 550px) {
+    article>header {
+        font-size:0.9em;
+    }
+}
+
+@media only screen and (min-width: 551px) and (max-width: 768px) {
+
+    #content {
+        width: 100%;
+        border-right: none;
+    }
+
+    #sidebar {
+        width: 100%;
+        margin-left: 0;
+    }
+
+    #sidebar > section {
+        width:30%;
+        float:left;
+    }
+
+    #sidebar > section:nth-of-type(3n + 2),
+    #sidebar > section:nth-of-type(3n + 3) {
+        margin-left: 5%;
+    }
+
+    #sidebar > section:nth-of-type(3n + 1) {
+        clear: both;
+    }
+
+}
+
+/*
+   Styles for managing the cidebar,
+   inspired by http://cssdeck.com/labs/css-only-toggle
+*/
+
+
+#width_sidebar {
+  border: 0;
+  clip: rect(0 0 0 0);
+  height: 1px;
+  width: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: fixed;
+}
+
+[for="width_sidebar"] {
+  display: none;
+}
+
+@media only screen and (min-width: 769px) {
+
+  [for="width_sidebar"] {
+    display: block;
+    cursor: pointer;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 80%;
+    width: 1%;
+    text-align: center;
+    color: #bebebe;
+  }
+
+  [for="width_sidebar"]::after {
+    position: absolute;
+    left: -1px;
+    top: 0;
+    width: 1em;
+    font-size: 1.2em;
+    line-height: 1.1em;
+    padding-bottom: .15em;
+    -moz-border-radius-bottomright: 0.3em;
+    -webkit-border-bottom-right-radius: 0.3em;
+    border-bottom-right-radius: 0.3em;
+    text-align: center;
+    background: white;
+    border-bottom: 1px solid #e0e0e0;
+    border-right: 1px solid #e0e0e0;
+    content: "\00BB";
+  }
+
+  [for="width_sidebar"]:hover ~ #content {
+    box-shadow: 0.25em 0 6px rgba(0, 0, 0, 0.1);
+  }
+
+  [for="width_sidebar"] span:nth-of-type(1) {
+    border: 0;
+    clip: rect(0 0 0 0);
+    height: 1px;
+    width: 1px;
+    margin: -1px;
+    overflow: hidden;
+    padding: 0;
+    position: absolute;
+  }
+
+  [for="width_sidebar"] span:nth-of-type(3) {
+    display: none;
+    visibility: hidden;
+  }
+
+  input[type=checkbox]:checked ~ #content {
+    width: 100%;
+    padding-right: 1%;
+    border: none;
+  }
+
+  input[type=checkbox]:checked ~ #sidebar {
+    width: 100%;
+    margin-left: 0;
+    padding-top: 1.5em;
+    padding-left: 3%;
+    padding-right: 3%;
+  }
+
+  input[type=checkbox]:checked ~ #sidebar > section {
+    width: 30%;
+    float: left;
+  }
+
+  input[type=checkbox]:checked ~ #sidebar > section:nth-of-type(3n + 2),
+  input[type=checkbox]:checked ~ #sidebar > section:nth-of-type(3n + 3) {
+    margin-left: 5%;
+  }
+
+  input[type=checkbox]:checked ~ #sidebar > section:nth-of-type(3n + 1) {
+    clear: both;
+  }
+
+  input[type=checkbox]:checked ~ [for="width_sidebar"] {
+    border: none;
+    left: auto;
+    right: 0;
+    border: 1px solid rgb(238, 238, 238);
+  }
+
+  input[type=checkbox]:checked ~ [for="width_sidebar"]:hover {
+    background: #bebebe;
+  }
+
+  input[type=checkbox]:checked ~ [for="width_sidebar"]:hover::after {
+    color: white;
+  }
+
+  input[type=checkbox]:checked ~ [for="width_sidebar"]::after {
+    width: auto;
+    right: 0;
+    -moz-border-radius-bottomright: 0;
+    -webkit-border-bottom-right-radius: 0;
+    border-right: none;
+    border-bottom: none;
+    background: none;
+    content: "\00AB";
+  }
+
+  input[type=checkbox]:checked ~ [for="width_sidebar"] span:nth-of-type(3) {
+    display: block;
+    visibility: visible;
+  }
+
+  input[type=checkbox]:checked ~ [for="width_sidebar"] span:nth-of-type(2) {
+    display: none;
+    visibility: hidden;
+  }
+}
+
+/* For use with the code_line-number_word-wrap_switcher_jquery.js Pelican plugin */
+code {
+    overflow: auto;
+    /* This uses `white-space: pre-wrap` to get elements within <pre> tags to wrap. Python, for code chunks within three backticks (```), doesn't wordwrap code lines by default, because they're within <pre> tags, which don't wrap by default. See https://github.com/github/markup/issues/168 , which is specifically about this parsing issue, even though that link's discussion is talking about GitHub. */
+    white-space: pre-wrap;       /* css-3 */
+    white-space: -moz-pre-wrap;  /* Mozilla, since 1999 */
+    white-space: -pre-wrap;      /* Opera 4-6 */
+    white-space: -o-pre-wrap;    /* Opera 7 */
+    word-wrap: break-word;       /* Internet Explorer 5.5+ */
+}
+
+/* Following http://bililite.com/blog/2012/08/05/line-numbering-in-pre-elements/, use CSS to add line numbers to all spans that have the class 'code-line' */
+
+.highlight pre {
+    counter-reset: linecounter;
+    padding-left: 2em;
+}
+.highlight pre span.code-line {
+    counter-increment: linecounter;
+    padding-left: 1em;
+    text-indent: -1em;
+    display: inline-block;
+}
+.highlight pre span.code-line:before {
+    content: counter(linecounter);
+    padding-right: 1em;
+    display: inline-block;
+    color: grey;
+    text-align: right;
+}
+
+/* from http://cpratt.co/twitter-bootstrap-callout-css-styles/ */
+.bs-callout {
+    padding: 20px;
+    margin: 20px 0;
+    border: 1px solid #eee;
+    border-left-width: 5px;
+    border-radius: 3px;
+}
+.bs-callout h4 {
+    margin-top: 0;
+    margin-bottom: 5px;
+}
+.bs-callout p:last-child {
+    margin-bottom: 0;
+}
+.bs-callout code {
+    border-radius: 3px;
+}
+.bs-callout+.bs-callout {
+    margin-top: -5px;
+}
+.bs-callout-default {
+    border-left-color: #777;
+}
+.bs-callout-default h4 {
+    color: #777;
+}
+.bs-callout-primary {
+    border-left-color: #428bca;
+}
+.bs-callout-primary h4 {
+    color: #428bca;
+}
+.bs-callout-success {
+    border-left-color: #5cb85c;
+}
+.bs-callout-success h4 {
+    color: #5cb85c;
+}
+.bs-callout-danger {
+    border-left-color: #d9534f;
+}
+.bs-callout-danger h4 {
+    color: #d9534f;
+}
+.bs-callout-warning {
+    border-left-color: #f0ad4e;
+}
+.bs-callout-warning h4 {
+    color: #f0ad4e;
+}
+.bs-callout-info {
+    border-left-color: #5bc0de;
+}
+.bs-callout-info h4 {
+    color: #5bc0de;
+}
