@@ -1,5 +1,386 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>Drew Barbarello's Blog - misc</title><link href="https://dbarbs.net/" rel="alternate"></link><link href="https://dbarbs.net/feeds/misc.atom.xml" rel="self"></link><id>https://dbarbs.net/</id><updated>2018-05-28T00:00:00-04:00</updated><entry><title>Deriving Perspective and Parallel Projection Matrices</title><link href="https://dbarbs.net/posts/2018/05/deriving-perspective-and-parallel-projection-matrices/" rel="alternate"></link><published>2018-05-28T00:00:00-04:00</published><updated>2018-05-28T00:00:00-04:00</updated><author><name>Andrew Barbarello</name></author><id>tag:dbarbs.net,2018-05-28:/posts/2018/05/deriving-perspective-and-parallel-projection-matrices/</id><summary type="html">&lt;p&gt;An attempt to figure out where the magic matrices in &lt;code&gt;glOrtho&lt;/code&gt; and &lt;code&gt;glFrustum&lt;/code&gt; come from.&lt;/p&gt;</summary><content type="html">&lt;h2 id="the-perspective-projection-matrix"&gt;The Perspective Projection Matrix&lt;/h2&gt;
+<feed xmlns="http://www.w3.org/2005/Atom"><title>Drew Barbarello's Blog - misc</title><link href="https://dbarbs.net/" rel="alternate"></link><link href="https://dbarbs.net/feeds/misc.atom.xml" rel="self"></link><id>https://dbarbs.net/</id><updated>2019-10-05T00:00:00-04:00</updated><entry><title>Solving Flare-On 6 #11 (vv_max) with angr</title><link href="https://dbarbs.net/posts/2019/10/solving-flare-on-6-11-vv_max-with-angr/" rel="alternate"></link><published>2019-10-05T00:00:00-04:00</published><updated>2019-10-05T00:00:00-04:00</updated><author><name>Andrew Barbarello</name></author><id>tag:dbarbs.net,2019-10-05:/posts/2019/10/solving-flare-on-6-11-vv_max-with-angr/</id><summary type="html">&lt;p&gt;A solution to Challenge 11 from FireEye's 2019 Flare-On CTF.&lt;/p&gt;</summary><content type="html">
+&lt;p&gt;FireEye’s &lt;a href="https://www.fireeye.com/blog/threat-research/2019/09/2019-flare-on-challenge-solutions.html"&gt;Flare-On Challenge&lt;/a&gt; is an annual, purely reverse engineering-focused capture the flag event. This year’s challenge was the second I participated in, and the first one I completed. You can find my notes/scripts for all the challenges &lt;a href="https://github.com/drewbarbs/flareon2019"&gt;here&lt;/a&gt;. This post presents my solution to the 11th challenge, using the &lt;a href="https://angr.io/"&gt;angr&lt;/a&gt; symbolic execution library.&lt;/p&gt;
+&lt;p&gt;The hint for this challenge was “Hey, at least it’s not subleq.” A quick google search shows that SUBLEQ is an example of a “&lt;a href="https://en.wikipedia.org/wiki/One_instruction_set_computer"&gt;One instruction set computer&lt;/a&gt;”, and apparently there was &lt;a href="https://www.fireeye.com/content/dam/fireeye-www/global/en/blog/threat-research/Flare-On%202017/Challenge11.pdf"&gt;a prior Flare-On challenge&lt;/a&gt; with a &lt;code&gt;subleq&lt;/code&gt;-based VM. That tips us off that this challenge is also VM-based.&lt;/p&gt;
+&lt;p&gt;Just looking at string references, it’s clear the function at &lt;code&gt;140001610&lt;/code&gt; is where the program determines whether our input is correct. Here’s the decompilation of that function in Ghidra after I’ve marked it up:&lt;/p&gt;
+&lt;figure&gt;
+&lt;img src="/img/2019-10-05-check_and_print_result.png" alt="Decompilation of function at 140001610" /&gt;&lt;figcaption&gt;Decompilation of function at 140001610&lt;/figcaption&gt;
+&lt;/figure&gt;
+&lt;p&gt;We can see that &lt;code&gt;argv[1]&lt;/code&gt; must be equal to “FLARE2019”. Reversing the rest of &lt;code&gt;vv_max.exe&lt;/code&gt;, we figure out that the first argument to this function is a pointer to a struct representing the state of a VM. The VM is simple: just an instruction pointer and a set of 256-bit registers, without any instructions to read/write memory. &lt;code&gt;vv_max.exe&lt;/code&gt; executes a program with this VM, then checks the result with the function above. Specifically, it will print the flag if &lt;code&gt;r2 == r20&lt;/code&gt; when execution finishes. &lt;code&gt;vv_max.exe&lt;/code&gt; takes two command line arguments, which are written into the bytecode before starting the VM.&lt;/p&gt;
+&lt;p&gt;Each VM instruction is implemented with its own function, and directly corresponds to an AVX/AVX2 instruction. For example, the function at &lt;code&gt;140003030&lt;/code&gt; implements the instruction with opcode 3. The opcode is followed by a destination register index, and two source register indices (each represented by 1 byte).&lt;/p&gt;
+&lt;figure&gt;
+&lt;img src="/img/2019-10-05-vpxor.png" alt="Decompilation of function at 140003030" /&gt;&lt;figcaption&gt;Decompilation of function at 140003030&lt;/figcaption&gt;
+&lt;/figure&gt;
+&lt;p&gt;After reversing all the VM instructions, my next step was to implement a &lt;a href="https://github.com/drewbarbs/flareon2019/blob/master/11_vv_max/disassemble.py"&gt;disassembler&lt;/a&gt; for the VM byte code, which generates this listing:&lt;/p&gt;
+&lt;pre id="disassemblyListing"&gt;
+   0:   clearregs
+   1:   movimm r0, 0000000000000000000000000000000000000000000000000000000000000000
+  35:   movimm r1, 0000000000000000000000000000000000000000000000000000000000000000
+  69:   movimm r3, 15111111111111111111131a1b1b1b1a15111111111111111111131a1b1b1b1a
+ 103:   movimm r4, 1010010204080408101010101010101010100102040804081010101010101010
+ 137:   movimm r5, 00101304bfbfb9b9000000000000000000101304bfbfb9b90000000000000000
+ 171:   movimm r6, 2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f
+ 205:   movimm r10, 4001400140014001400140014001400140014001400140014001400140014001
+ 239:   movimm r11, 0010010000100100001001000010010000100100001001000010010000100100
+ 273:   movimm r12, 0201000605040a09080e0d0cffffffff0201000605040a09080e0d0cffffffff
+ 307:   movimm r13, 000000000100000002000000040000000500000006000000ffffffffffffffff
+ 341:   movimm r16, ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+ 375:   movimm r17, 19cde05babd9831f8c68059b7f520e513af54fa572f36e3c85ae67bb67e6096a
+ 409:   movimm r18, d55e1caba4823f92f111f1595bc25639a5dbb5e9cffbc0b591443771982f8a42
+ 443:   movimm r19, 0400000005000000060000000700000000000000010000000200000003000000
+ 477:   movimm r20, 0000000000000000000000000000000000000000000000000000000000000000
+ 511:   movimm r21, 0100000001000000010000000100000001000000010000000100000001000000
+ 545:   movimm r22, 0200000002000000020000000200000002000000020000000200000002000000
+ 579:   movimm r23, 0300000003000000030000000300000003000000030000000300000003000000
+ 613:   movimm r24, 0400000004000000040000000400000004000000040000000400000004000000
+ 647:   movimm r25, 0500000005000000050000000500000005000000050000000500000005000000
+ 681:   movimm r26, 0600000006000000060000000600000006000000060000000600000006000000
+ 715:   movimm r27, 0700000007000000070000000700000007000000070000000700000007000000
+ 749:   vpermd r20, r0, r20
+ 753:   vpermd r21, r0, r21
+ 757:   vpermd r22, r0, r22
+ 761:   vpermd r23, r0, r23
+ 765:   vpermd r24, r0, r24
+ 769:   vpermd r25, r0, r25
+ 773:   vpermd r26, r0, r26
+ 777:   vpermd r27, r0, r27
+ 781:   vpsrld r7, r1, 0x4
+ 785:   vpxor r28, r20, r21
+ 789:   vpxor r28, r28, r22
+ 793:   vpxor r28, r28, r23
+ 797:   vpxor r28, r28, r24
+ 801:   vpxor r28, r28, r25
+ 805:   vpxor r28, r28, r26
+ 809:   vpxor r28, r28, r27
+ 813:   vpand r7, r7, r6
+ 817:   vpslld r29, r17, 0x7
+ 821:   vpsrld r30, r17, 0x19
+ 825:   vpor r15, r29, r30
+ 829:   vpcmpeqb r8, r1, r6
+ 833:   vpslld r29, r17, 0x15
+ 837:   vpsrld r30, r17, 0xb
+ 841:   vpor r29, r29, r30
+ 845:   vpxor r15, r15, r29
+ 849:   vpcmpeqb r8, r1, r6
+ 853:   vpslld r29, r17, 0x1a
+ 857:   vpsrld r30, r17, 0x6
+ 861:   vpor r29, r29, r30
+ 865:   vpxor r15, r15, r29
+ 869:   vpxor r29, r20, r16
+ 873:   vpand r30, r20, r18
+ 877:   vpxor r29, r29, r30
+ 881:   vpaddd r15, r29, r15
+ 885:   vpaddd r20, r15, r0
+ 889:   vpaddb r7, r8, r7
+ 893:   vpxor r29, r20, r28
+ 897:   vpermd r17, r29, r19
+ 901:   vpshufb r7, r5, r7
+ 905:   vpslld r29, r17, 0x7
+ 909:   vpsrld r30, r17, 0x19
+ 913:   vpor r15, r29, r30
+ 917:   vpslld r29, r17, 0x15
+ 921:   vpsrld r30, r17, 0xb
+ 925:   vpor r29, r29, r30
+ 929:   vpxor r15, r15, r29
+ 933:   vpslld r29, r17, 0x1a
+ 937:   vpsrld r30, r17, 0x6
+ 941:   vpor r29, r29, r30
+ 945:   vpxor r15, r15, r29
+ 949:   vpaddb r2, r1, r7
+ 953:   vpxor r29, r21, r16
+ 957:   vpand r30, r21, r18
+ 961:   vpxor r29, r29, r30
+ 965:   vpaddd r15, r29, r15
+ 969:   vpaddd r21, r15, r0
+ 973:   vpxor r29, r21, r28
+ 977:   vpermd r17, r29, r19
+ 981:   vpxor r20, r20, r21
+ 985:   vpslld r29, r17, 0x7
+ 989:   vpsrld r30, r17, 0x19
+ 993:   vpor r15, r29, r30
+ 997:   vpslld r29, r17, 0x15
+1001:   vpsrld r30, r17, 0xb
+1005:   vpor r29, r29, r30
+1009:   vpxor r15, r15, r29
+1013:   vpslld r29, r17, 0x1a
+1017:   vpsrld r30, r17, 0x6
+1021:   vpor r29, r29, r30
+1025:   vpxor r15, r15, r29
+1029:   vpmaddubsw r7, r2, r10
+1033:   vpxor r29, r22, r16
+1037:   vpand r30, r22, r18
+1041:   vpxor r29, r29, r30
+1045:   vpaddd r15, r29, r15
+1049:   vpaddd r22, r15, r0
+1053:   vpxor r29, r22, r28
+1057:   vpermd r17, r29, r19
+1061:   vpxor r20, r20, r22
+1065:   vpslld r29, r17, 0x7
+1069:   vpsrld r30, r17, 0x19
+1073:   vpor r15, r29, r30
+1077:   vpslld r29, r17, 0x15
+1081:   vpsrld r30, r17, 0xb
+1085:   vpor r29, r29, r30
+1089:   vpxor r15, r15, r29
+1093:   vpslld r29, r17, 0x1a
+1097:   vpsrld r30, r17, 0x6
+1101:   vpor r29, r29, r30
+1105:   vpxor r15, r15, r29
+1109:   vpmaddwd r2, r7, r11
+1113:   vpxor r29, r23, r16
+1117:   vpand r30, r23, r18
+1121:   vpxor r29, r29, r30
+1125:   vpaddd r15, r29, r15
+1129:   vpaddd r23, r15, r0
+1133:   vpxor r29, r23, r28
+1137:   vpermd r17, r29, r19
+1141:   vpxor r20, r20, r23
+1145:   vpslld r29, r17, 0x7
+1149:   vpsrld r30, r17, 0x19
+1153:   vpor r15, r29, r30
+1157:   vpslld r29, r17, 0x15
+1161:   vpsrld r30, r17, 0xb
+1165:   vpor r29, r29, r30
+1169:   vpxor r15, r15, r29
+1173:   vpslld r29, r17, 0x1a
+1177:   vpsrld r30, r17, 0x6
+1181:   vpor r29, r29, r30
+1185:   vpxor r15, r15, r29
+1189:   vpxor r29, r24, r16
+1193:   vpand r30, r24, r18
+1197:   vpxor r29, r29, r30
+1201:   vpaddd r15, r29, r15
+1205:   vpaddd r24, r15, r0
+1209:   vpxor r29, r24, r28
+1213:   vpermd r17, r29, r19
+1217:   vpxor r20, r20, r24
+1221:   vpslld r29, r17, 0x7
+1225:   vpsrld r30, r17, 0x19
+1229:   vpor r15, r29, r30
+1233:   vpslld r29, r17, 0x15
+1237:   vpsrld r30, r17, 0xb
+1241:   vpor r29, r29, r30
+1245:   vpxor r15, r15, r29
+1249:   vpslld r29, r17, 0x1a
+1253:   vpsrld r30, r17, 0x6
+1257:   vpor r29, r29, r30
+1261:   vpxor r15, r15, r29
+1265:   vpxor r29, r25, r16
+1269:   vpand r30, r25, r18
+1273:   vpxor r29, r29, r30
+1277:   vpaddd r15, r29, r15
+1281:   vpaddd r25, r15, r0
+1285:   vpxor r29, r25, r28
+1289:   vpermd r17, r29, r19
+1293:   vpxor r20, r20, r25
+1297:   vpshufb r2, r2, r12
+1301:   vpslld r29, r17, 0x7
+1305:   vpsrld r30, r17, 0x19
+1309:   vpor r15, r29, r30
+1313:   vpslld r29, r17, 0x15
+1317:   vpsrld r30, r17, 0xb
+1321:   vpor r29, r29, r30
+1325:   vpxor r15, r15, r29
+1329:   vpslld r29, r17, 0x1a
+1333:   vpsrld r30, r17, 0x6
+1337:   vpor r29, r29, r30
+1341:   vpxor r15, r15, r29
+1345:   vpxor r29, r26, r16
+1349:   vpand r30, r26, r18
+1353:   vpxor r29, r29, r30
+1357:   vpaddd r15, r29, r15
+1361:   vpaddd r26, r15, r0
+1365:   vpxor r29, r26, r28
+1369:   vpermd r17, r29, r19
+1373:   vpxor r20, r20, r26
+1377:   vpslld r29, r17, 0x7
+1381:   vpsrld r30, r17, 0x19
+1385:   vpor r15, r29, r30
+1389:   vpslld r29, r17, 0x15
+1393:   vpsrld r30, r17, 0xb
+1397:   vpor r29, r29, r30
+1401:   vpxor r15, r15, r29
+1405:   vpslld r29, r17, 0x1a
+1409:   vpsrld r30, r17, 0x6
+1413:   vpor r29, r29, r30
+1417:   vpxor r15, r15, r29
+1421:   vpermd r2, r2, r13
+1425:   vpxor r29, r27, r16
+1429:   vpand r30, r27, r18
+1433:   vpxor r29, r29, r30
+1437:   vpaddd r15, r29, r15
+1441:   vpaddd r27, r15, r0
+1445:   vpxor r29, r27, r28
+1449:   vpermd r17, r29, r19
+1453:   vpxor r20, r20, r27
+1457:   movimm r19, ffffffffffffffffffffffffffffffffffffffffffffffff0000000000000000
+1491:   vpand r20, r20, r19
+1495:   movimm r31, 221e1b4b2d17050c15590e782326332e10074f731836580b290f5c3a0c627621
+&lt;/pre&gt;
+&lt;p&gt;The 32 byte immediate values loaded into &lt;code&gt;r0&lt;/code&gt; and &lt;code&gt;r1&lt;/code&gt; in the beginning of the program are replaced by &lt;code&gt;argv[1]&lt;/code&gt; (“FLAREON2019”) and &lt;code&gt;argv[2]&lt;/code&gt; before the bytecode is executed. Rather than reversing the listing, I decided it would be easier to modify my disassembler to output C code, compile it, then use angr on the resulting binary to solve for the value of &lt;code&gt;argv[2]&lt;/code&gt; that makes &lt;code&gt;r2 == r20&lt;/code&gt; when the program exits. Why not use angr directly on &lt;code&gt;vv_max.exe&lt;/code&gt;? Because the symbolic execution is massively slowed down by tracing through the VM execution.&lt;/p&gt;
+&lt;p&gt;The final conversion script is below. I referenced &lt;a href="https://software.intel.com/sites/landingpage/IntrinsicsGuide/"&gt;this&lt;/a&gt; site to find the intrinsics corresponding to each instruction. Note that at the time of the competition, prior to &lt;a href="https://github.com/angr/angr/commit/07c7cd49b962ddabdbca36a081d57b26cd7278e1"&gt;this&lt;/a&gt; commit, angr did not support the &lt;code&gt;vpmaddwd&lt;/code&gt; instruction, so I substituted a simple C function for the intrinsic.&lt;/p&gt;
+&lt;div class="sourceCode" id="cb1"&gt;&lt;pre class="sourceCode py"&gt;&lt;code class="sourceCode python"&gt;&lt;a class="sourceLine" id="cb1-1" data-line-number="1"&gt;&lt;span class="co"&gt;#!/usr/bin/env python3&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-2" data-line-number="2"&gt;&lt;span class="im"&gt;import&lt;/span&gt; textwrap&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-3" data-line-number="3"&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-4" data-line-number="4"&gt;&lt;span class="im"&gt;import&lt;/span&gt; cle&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-5" data-line-number="5"&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-6" data-line-number="6"&gt;INSTRS &lt;span class="op"&gt;=&lt;/span&gt; [&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-7" data-line-number="7"&gt;    {},  &lt;span class="co"&gt;# clearregs, dont bother implementing&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-8" data-line-number="8"&gt;    {&lt;span class="st"&gt;&amp;#39;mnemonic&amp;#39;&lt;/span&gt;: &lt;span class="st"&gt;&amp;#39;vpmaddubsw&amp;#39;&lt;/span&gt;, &lt;span class="st"&gt;&amp;#39;args&amp;#39;&lt;/span&gt;: [&lt;span class="st"&gt;&amp;#39;r&amp;#39;&lt;/span&gt;, &lt;span class="st"&gt;&amp;#39;r&amp;#39;&lt;/span&gt;], &lt;span class="st"&gt;&amp;#39;intrinsic&amp;#39;&lt;/span&gt;: &lt;span class="st"&gt;&amp;#39;_mm256_maddubs_epi16&amp;#39;&lt;/span&gt;},&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-9" data-line-number="9"&gt;    {&lt;span class="st"&gt;&amp;#39;mnemonic&amp;#39;&lt;/span&gt;: &lt;span class="st"&gt;&amp;#39;vpmaddwd&amp;#39;&lt;/span&gt;, &lt;span class="st"&gt;&amp;#39;args&amp;#39;&lt;/span&gt;: [&lt;span class="st"&gt;&amp;#39;r&amp;#39;&lt;/span&gt;, &lt;span class="st"&gt;&amp;#39;r&amp;#39;&lt;/span&gt;], &lt;span class="st"&gt;&amp;#39;intrinsic&amp;#39;&lt;/span&gt;: &lt;span class="st"&gt;&amp;#39;do_vpmaddwd&amp;#39;&lt;/span&gt;},&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-10" data-line-number="10"&gt;    {&lt;span class="st"&gt;&amp;#39;mnemonic&amp;#39;&lt;/span&gt;: &lt;span class="st"&gt;&amp;#39;vpxor&amp;#39;&lt;/span&gt;, &lt;span class="st"&gt;&amp;#39;args&amp;#39;&lt;/span&gt;: [&lt;span class="st"&gt;&amp;#39;r&amp;#39;&lt;/span&gt;, &lt;span class="st"&gt;&amp;#39;r&amp;#39;&lt;/span&gt;], &lt;span class="st"&gt;&amp;#39;intrinsic&amp;#39;&lt;/span&gt;: &lt;span class="st"&gt;&amp;#39;_mm256_xor_si256&amp;#39;&lt;/span&gt;},&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-11" data-line-number="11"&gt;    {&lt;span class="st"&gt;&amp;#39;mnemonic&amp;#39;&lt;/span&gt;: &lt;span class="st"&gt;&amp;#39;vpor&amp;#39;&lt;/span&gt;, &lt;span class="st"&gt;&amp;#39;args&amp;#39;&lt;/span&gt;: [&lt;span class="st"&gt;&amp;#39;r&amp;#39;&lt;/span&gt;, &lt;span class="st"&gt;&amp;#39;r&amp;#39;&lt;/span&gt;], &lt;span class="st"&gt;&amp;#39;intrinsic&amp;#39;&lt;/span&gt;: &lt;span class="st"&gt;&amp;#39;_mm256_or_si256&amp;#39;&lt;/span&gt;},&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-12" data-line-number="12"&gt;    {&lt;span class="st"&gt;&amp;#39;mnemonic&amp;#39;&lt;/span&gt;: &lt;span class="st"&gt;&amp;#39;vpand&amp;#39;&lt;/span&gt;, &lt;span class="st"&gt;&amp;#39;args&amp;#39;&lt;/span&gt;: [&lt;span class="st"&gt;&amp;#39;r&amp;#39;&lt;/span&gt;, &lt;span class="st"&gt;&amp;#39;r&amp;#39;&lt;/span&gt;], &lt;span class="st"&gt;&amp;#39;intrinsic&amp;#39;&lt;/span&gt;: &lt;span class="st"&gt;&amp;#39;_mm256_and_si256&amp;#39;&lt;/span&gt;},&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-13" data-line-number="13"&gt;    {},  &lt;span class="co"&gt;# bitwise_not, unused&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-14" data-line-number="14"&gt;    {&lt;span class="st"&gt;&amp;#39;mnemonic&amp;#39;&lt;/span&gt;: &lt;span class="st"&gt;&amp;#39;vpaddb&amp;#39;&lt;/span&gt;, &lt;span class="st"&gt;&amp;#39;args&amp;#39;&lt;/span&gt;: [&lt;span class="st"&gt;&amp;#39;r&amp;#39;&lt;/span&gt;, &lt;span class="st"&gt;&amp;#39;r&amp;#39;&lt;/span&gt;], &lt;span class="st"&gt;&amp;#39;intrinsic&amp;#39;&lt;/span&gt;: &lt;span class="st"&gt;&amp;#39;_mm256_add_epi8&amp;#39;&lt;/span&gt;},&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-15" data-line-number="15"&gt;    {},  &lt;span class="co"&gt;# vpsubb, unused&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-16" data-line-number="16"&gt;    {},  &lt;span class="co"&gt;# vpaddw, unused&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-17" data-line-number="17"&gt;    {},  &lt;span class="co"&gt;# vpsubw, unused&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-18" data-line-number="18"&gt;    {&lt;span class="st"&gt;&amp;#39;mnemonic&amp;#39;&lt;/span&gt;: &lt;span class="st"&gt;&amp;#39;vpaddd&amp;#39;&lt;/span&gt;, &lt;span class="st"&gt;&amp;#39;args&amp;#39;&lt;/span&gt;: [&lt;span class="st"&gt;&amp;#39;r&amp;#39;&lt;/span&gt;, &lt;span class="st"&gt;&amp;#39;r&amp;#39;&lt;/span&gt;], &lt;span class="st"&gt;&amp;#39;intrinsic&amp;#39;&lt;/span&gt;: &lt;span class="st"&gt;&amp;#39;_mm256_add_epi32&amp;#39;&lt;/span&gt;},&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-19" data-line-number="19"&gt;    {},  &lt;span class="co"&gt;# vpsubd, unused&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-20" data-line-number="20"&gt;    {},  &lt;span class="co"&gt;# vpaddq, unused&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-21" data-line-number="21"&gt;    {},  &lt;span class="co"&gt;# vpsubq, unused&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-22" data-line-number="22"&gt;    {},  &lt;span class="co"&gt;# vpmulq, unused&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-23" data-line-number="23"&gt;    {},  &lt;span class="co"&gt;# movreg, unused&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-24" data-line-number="24"&gt;    {&lt;span class="st"&gt;&amp;#39;mnemonic&amp;#39;&lt;/span&gt;: &lt;span class="st"&gt;&amp;#39;movimm&amp;#39;&lt;/span&gt;, &lt;span class="st"&gt;&amp;#39;args&amp;#39;&lt;/span&gt;: [&lt;span class="st"&gt;&amp;#39;imm256&amp;#39;&lt;/span&gt;]},&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-25" data-line-number="25"&gt;    {&lt;span class="st"&gt;&amp;#39;mnemonic&amp;#39;&lt;/span&gt;: &lt;span class="st"&gt;&amp;#39;vpsrld&amp;#39;&lt;/span&gt;, &lt;span class="st"&gt;&amp;#39;args&amp;#39;&lt;/span&gt;: [&lt;span class="st"&gt;&amp;#39;r&amp;#39;&lt;/span&gt;, &lt;span class="st"&gt;&amp;#39;imm8&amp;#39;&lt;/span&gt;], &lt;span class="st"&gt;&amp;#39;intrinsic&amp;#39;&lt;/span&gt;: &lt;span class="st"&gt;&amp;#39;_mm256_srli_epi32&amp;#39;&lt;/span&gt;},&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-26" data-line-number="26"&gt;    {&lt;span class="st"&gt;&amp;#39;mnemonic&amp;#39;&lt;/span&gt;: &lt;span class="st"&gt;&amp;#39;vpslld&amp;#39;&lt;/span&gt;, &lt;span class="st"&gt;&amp;#39;args&amp;#39;&lt;/span&gt;: [&lt;span class="st"&gt;&amp;#39;r&amp;#39;&lt;/span&gt;, &lt;span class="st"&gt;&amp;#39;imm8&amp;#39;&lt;/span&gt;], &lt;span class="st"&gt;&amp;#39;intrinsic&amp;#39;&lt;/span&gt;: &lt;span class="st"&gt;&amp;#39;_mm256_slli_epi32&amp;#39;&lt;/span&gt;},&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-27" data-line-number="27"&gt;    {&lt;span class="st"&gt;&amp;#39;mnemonic&amp;#39;&lt;/span&gt;: &lt;span class="st"&gt;&amp;#39;vpshufb&amp;#39;&lt;/span&gt;, &lt;span class="st"&gt;&amp;#39;args&amp;#39;&lt;/span&gt;: [&lt;span class="st"&gt;&amp;#39;r&amp;#39;&lt;/span&gt;, &lt;span class="st"&gt;&amp;#39;r&amp;#39;&lt;/span&gt;], &lt;span class="st"&gt;&amp;#39;intrinsic&amp;#39;&lt;/span&gt;: &lt;span class="st"&gt;&amp;#39;_mm256_shuffle_epi8&amp;#39;&lt;/span&gt;},&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-28" data-line-number="28"&gt;    {&lt;span class="st"&gt;&amp;#39;mnemonic&amp;#39;&lt;/span&gt;: &lt;span class="st"&gt;&amp;#39;vpermd&amp;#39;&lt;/span&gt;, &lt;span class="st"&gt;&amp;#39;args&amp;#39;&lt;/span&gt;: [&lt;span class="st"&gt;&amp;#39;r&amp;#39;&lt;/span&gt;, &lt;span class="st"&gt;&amp;#39;r&amp;#39;&lt;/span&gt;], &lt;span class="st"&gt;&amp;#39;intrinsic&amp;#39;&lt;/span&gt;: &lt;span class="st"&gt;&amp;#39;_mm256_permutevar8x32_epi32&amp;#39;&lt;/span&gt;},&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-29" data-line-number="29"&gt;    {&lt;span class="st"&gt;&amp;#39;mnemonic&amp;#39;&lt;/span&gt;: &lt;span class="st"&gt;&amp;#39;vpcmpeqb&amp;#39;&lt;/span&gt;, &lt;span class="st"&gt;&amp;#39;args&amp;#39;&lt;/span&gt;: [&lt;span class="st"&gt;&amp;#39;r&amp;#39;&lt;/span&gt;, &lt;span class="st"&gt;&amp;#39;r&amp;#39;&lt;/span&gt;], &lt;span class="st"&gt;&amp;#39;intrinsic&amp;#39;&lt;/span&gt;: &lt;span class="st"&gt;&amp;#39;_mm256_cmpeq_epi8&amp;#39;&lt;/span&gt;},&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-30" data-line-number="30"&gt;    {}   &lt;span class="co"&gt;# nop, unused&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-31" data-line-number="31"&gt;]&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-32" data-line-number="32"&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-33" data-line-number="33"&gt;TEMPLATE &lt;span class="op"&gt;=&lt;/span&gt; &lt;span class="st"&gt;&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-34" data-line-number="34"&gt;&lt;span class="st"&gt;#include &amp;lt;immintrin.h&amp;gt;&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-35" data-line-number="35"&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-36" data-line-number="36"&gt;&lt;span class="sc"&gt;{constants}&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-37" data-line-number="37"&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-38" data-line-number="38"&gt;&lt;span class="sc"&gt;{vpmaddwd_implementation}&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-39" data-line-number="39"&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-40" data-line-number="40"&gt;&lt;span class="st"&gt;int main(int argc, char **argv) &lt;/span&gt;&lt;span class="sc"&gt;{{&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-41" data-line-number="41"&gt;&lt;span class="st"&gt;    // Code to initialize variables r0-r31 to zero&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-42" data-line-number="42"&gt;&lt;span class="sc"&gt;{zero_init_regs}&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-43" data-line-number="43"&gt;&lt;span class="st"&gt;    // Converted bytecode&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-44" data-line-number="44"&gt;&lt;span class="sc"&gt;{body}&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-45" data-line-number="45"&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-46" data-line-number="46"&gt;&lt;span class="st"&gt;    // Replicate the checks from the function at 140001610 of vv_max.exe&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-47" data-line-number="47"&gt;&lt;span class="st"&gt;    __m256i cmpresult = _mm256_cmpeq_epi8(r2, r20);&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-48" data-line-number="48"&gt;&lt;span class="st"&gt;    int32_t result = _mm256_movemask_epi8(cmpresult);&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-49" data-line-number="49"&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-50" data-line-number="50"&gt;&lt;span class="st"&gt;    // We want result == -1&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-51" data-line-number="51"&gt;&lt;span class="st"&gt;    return result;&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-52" data-line-number="52"&gt;&lt;span class="sc"&gt;}}&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-53" data-line-number="53"&gt;&lt;span class="st"&gt;&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-54" data-line-number="54"&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-55" data-line-number="55"&gt;VPMADDWD_IMPLEMENTATION &lt;span class="op"&gt;=&lt;/span&gt; &lt;span class="st"&gt;&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-56" data-line-number="56"&gt;&lt;span class="st"&gt;__m256i do_vpmaddwd(__m256i a, __m256i b) {&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-57" data-line-number="57"&gt;&lt;span class="st"&gt;    int32_t intermediate[16] = &lt;/span&gt;&lt;span class="sc"&gt;{0}&lt;/span&gt;&lt;span class="st"&gt;;&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-58" data-line-number="58"&gt;&lt;span class="st"&gt;    int32_t result[8] = &lt;/span&gt;&lt;span class="sc"&gt;{0}&lt;/span&gt;&lt;span class="st"&gt;;&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-59" data-line-number="59"&gt;&lt;span class="st"&gt;    for (int i = 0; i &amp;lt; 16; ++i) {&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-60" data-line-number="60"&gt;&lt;span class="st"&gt;        intermediate[i] = ((int16_t*)&amp;amp;a)[i] * ((int16_t*)&amp;amp;b)[i];&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-61" data-line-number="61"&gt;&lt;span class="st"&gt;    }&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-62" data-line-number="62"&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-63" data-line-number="63"&gt;&lt;span class="st"&gt;    for (int i = 0; i &amp;lt; 8; ++i) {&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-64" data-line-number="64"&gt;&lt;span class="st"&gt;        result[i] = intermediate[2*i] + intermediate[2*i + 1];&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-65" data-line-number="65"&gt;&lt;span class="st"&gt;    }&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-66" data-line-number="66"&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-67" data-line-number="67"&gt;&lt;span class="st"&gt;    return _mm256_loadu_si256((__m256i const *)result);&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-68" data-line-number="68"&gt;&lt;span class="st"&gt;}&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-69" data-line-number="69"&gt;&lt;span class="st"&gt;&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-70" data-line-number="70"&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-71" data-line-number="71"&gt;vv_max &lt;span class="op"&gt;=&lt;/span&gt; cle.Loader(&lt;span class="st"&gt;&amp;#39;vv_max.exe&amp;#39;&lt;/span&gt;)&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-72" data-line-number="72"&gt;vv_max.memory.seek(&lt;span class="bn"&gt;0x140015350&lt;/span&gt;)&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-73" data-line-number="73"&gt;code &lt;span class="op"&gt;=&lt;/span&gt; vv_max.memory.read(&lt;span class="bn"&gt;0x5fb&lt;/span&gt;)&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-74" data-line-number="74"&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-75" data-line-number="75"&gt;code &lt;span class="op"&gt;=&lt;/span&gt; code[&lt;span class="dv"&gt;1&lt;/span&gt;:]  &lt;span class="co"&gt;# skip the first instruction &amp;quot;clearregs&amp;quot;&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-76" data-line-number="76"&gt;constants &lt;span class="op"&gt;=&lt;/span&gt; []&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-77" data-line-number="77"&gt;statements &lt;span class="op"&gt;=&lt;/span&gt; []&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-78" data-line-number="78"&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-79" data-line-number="79"&gt;&lt;span class="cf"&gt;while&lt;/span&gt; code &lt;span class="kw"&gt;and&lt;/span&gt; code[&lt;span class="dv"&gt;0&lt;/span&gt;] &lt;span class="op"&gt;!=&lt;/span&gt; &lt;span class="bn"&gt;0xff&lt;/span&gt;:&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-80" data-line-number="80"&gt;    opcode, dstreg, code &lt;span class="op"&gt;=&lt;/span&gt; code[&lt;span class="dv"&gt;0&lt;/span&gt;], code[&lt;span class="dv"&gt;1&lt;/span&gt;], code[&lt;span class="dv"&gt;2&lt;/span&gt;:]&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-81" data-line-number="81"&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-82" data-line-number="82"&gt;    &lt;span class="cf"&gt;if&lt;/span&gt; INSTRS[opcode][&lt;span class="st"&gt;&amp;#39;mnemonic&amp;#39;&lt;/span&gt;] &lt;span class="op"&gt;==&lt;/span&gt; &lt;span class="st"&gt;&amp;#39;movimm&amp;#39;&lt;/span&gt;:&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-83" data-line-number="83"&gt;        immediate, code &lt;span class="op"&gt;=&lt;/span&gt; code[:&lt;span class="dv"&gt;32&lt;/span&gt;], code[&lt;span class="dv"&gt;32&lt;/span&gt;:]&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-84" data-line-number="84"&gt;        immarr &lt;span class="op"&gt;=&lt;/span&gt; &lt;span class="st"&gt;&amp;#39;{&amp;#39;&lt;/span&gt; &lt;span class="op"&gt;+&lt;/span&gt; &lt;span class="st"&gt;&amp;#39;, &amp;#39;&lt;/span&gt;.join(&lt;span class="bu"&gt;hex&lt;/span&gt;(b) &lt;span class="cf"&gt;for&lt;/span&gt; b &lt;span class="kw"&gt;in&lt;/span&gt; immediate) &lt;span class="op"&gt;+&lt;/span&gt; &lt;span class="st"&gt;&amp;#39;}&amp;#39;&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-85" data-line-number="85"&gt;        constsym &lt;span class="op"&gt;=&lt;/span&gt; &lt;span class="ss"&gt;f&amp;#39;CONST&lt;/span&gt;&lt;span class="sc"&gt;{&lt;/span&gt;&lt;span class="bu"&gt;len&lt;/span&gt;(constants)&lt;span class="sc"&gt;}&lt;/span&gt;&lt;span class="ss"&gt;&amp;#39;&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-86" data-line-number="86"&gt;        constdecl &lt;span class="op"&gt;=&lt;/span&gt; &lt;span class="ss"&gt;f&amp;#39;const char &lt;/span&gt;&lt;span class="sc"&gt;{&lt;/span&gt;constsym&lt;span class="sc"&gt;}&lt;/span&gt;&lt;span class="ss"&gt;[32] = &lt;/span&gt;&lt;span class="sc"&gt;{&lt;/span&gt;immarr&lt;span class="sc"&gt;}&lt;/span&gt;&lt;span class="ss"&gt;;&amp;#39;&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-87" data-line-number="87"&gt;        constants.append(constdecl)&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-88" data-line-number="88"&gt;        statements.append(&lt;span class="ss"&gt;f&amp;#39;r&lt;/span&gt;&lt;span class="sc"&gt;{&lt;/span&gt;dstreg&lt;span class="sc"&gt;}&lt;/span&gt;&lt;span class="ss"&gt; = _mm256_loadu_si256((__m256i const *)&lt;/span&gt;&lt;span class="sc"&gt;{&lt;/span&gt;constsym&lt;span class="sc"&gt;}&lt;/span&gt;&lt;span class="ss"&gt;);&amp;#39;&lt;/span&gt;)&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-89" data-line-number="89"&gt;        &lt;span class="cf"&gt;continue&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-90" data-line-number="90"&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-91" data-line-number="91"&gt;    instrinfo &lt;span class="op"&gt;=&lt;/span&gt; INSTRS[opcode]&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-92" data-line-number="92"&gt;    args &lt;span class="op"&gt;=&lt;/span&gt; []&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-93" data-line-number="93"&gt;    &lt;span class="cf"&gt;for&lt;/span&gt; argtype &lt;span class="kw"&gt;in&lt;/span&gt; instrinfo[&lt;span class="st"&gt;&amp;#39;args&amp;#39;&lt;/span&gt;]:&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-94" data-line-number="94"&gt;        &lt;span class="cf"&gt;if&lt;/span&gt; argtype &lt;span class="op"&gt;==&lt;/span&gt; &lt;span class="st"&gt;&amp;#39;r&amp;#39;&lt;/span&gt;:&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-95" data-line-number="95"&gt;            rnum, code &lt;span class="op"&gt;=&lt;/span&gt; code[&lt;span class="dv"&gt;0&lt;/span&gt;], code[&lt;span class="dv"&gt;1&lt;/span&gt;:]&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-96" data-line-number="96"&gt;            args.append(&lt;span class="ss"&gt;f&amp;#39;r&lt;/span&gt;&lt;span class="sc"&gt;{&lt;/span&gt;rnum&lt;span class="sc"&gt;}&lt;/span&gt;&lt;span class="ss"&gt;&amp;#39;&lt;/span&gt;)&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-97" data-line-number="97"&gt;        &lt;span class="cf"&gt;elif&lt;/span&gt; argtype &lt;span class="op"&gt;==&lt;/span&gt; &lt;span class="st"&gt;&amp;#39;imm8&amp;#39;&lt;/span&gt;:&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-98" data-line-number="98"&gt;            imm, code &lt;span class="op"&gt;=&lt;/span&gt; code[&lt;span class="dv"&gt;0&lt;/span&gt;], code[&lt;span class="dv"&gt;1&lt;/span&gt;:]&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-99" data-line-number="99"&gt;            args.append(&lt;span class="ss"&gt;f&amp;#39;&lt;/span&gt;&lt;span class="sc"&gt;{&lt;/span&gt;&lt;span class="bu"&gt;hex&lt;/span&gt;(imm)&lt;span class="sc"&gt;}&lt;/span&gt;&lt;span class="ss"&gt;&amp;#39;&lt;/span&gt;)&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-100" data-line-number="100"&gt;        &lt;span class="cf"&gt;else&lt;/span&gt;:&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-101" data-line-number="101"&gt;            &lt;span class="cf"&gt;raise&lt;/span&gt; &lt;span class="pp"&gt;Exception&lt;/span&gt;(&lt;span class="ss"&gt;f&amp;#39;Unrecognized argument type &lt;/span&gt;&lt;span class="sc"&gt;{&lt;/span&gt;argtype&lt;span class="sc"&gt;}&lt;/span&gt;&lt;span class="ss"&gt;&amp;#39;&lt;/span&gt;)&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-102" data-line-number="102"&gt;    intrinsic &lt;span class="op"&gt;=&lt;/span&gt; instrinfo[&lt;span class="st"&gt;&amp;#39;intrinsic&amp;#39;&lt;/span&gt;]&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-103" data-line-number="103"&gt;    arglist &lt;span class="op"&gt;=&lt;/span&gt; &lt;span class="st"&gt;&amp;#39;, &amp;#39;&lt;/span&gt;.join(args)&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-104" data-line-number="104"&gt;    statements.append(&lt;span class="ss"&gt;f&amp;#39;r&lt;/span&gt;&lt;span class="sc"&gt;{&lt;/span&gt;dstreg&lt;span class="sc"&gt;}&lt;/span&gt;&lt;span class="ss"&gt; = &lt;/span&gt;&lt;span class="sc"&gt;{&lt;/span&gt;intrinsic&lt;span class="sc"&gt;}&lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="sc"&gt;{&lt;/span&gt;arglist&lt;span class="sc"&gt;}&lt;/span&gt;&lt;span class="ss"&gt;);&amp;#39;&lt;/span&gt;)&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-105" data-line-number="105"&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-106" data-line-number="106"&gt;src &lt;span class="op"&gt;=&lt;/span&gt; TEMPLATE.&lt;span class="bu"&gt;format&lt;/span&gt;(&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-107" data-line-number="107"&gt;    constants&lt;span class="op"&gt;=&lt;/span&gt;&lt;span class="st"&gt;&amp;#39;&lt;/span&gt;&lt;span class="ch"&gt;\n&lt;/span&gt;&lt;span class="st"&gt;&amp;#39;&lt;/span&gt;.join(constants),&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-108" data-line-number="108"&gt;    vpmaddwd_implementation&lt;span class="op"&gt;=&lt;/span&gt;VPMADDWD_IMPLEMENTATION,&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-109" data-line-number="109"&gt;    zero_init_regs&lt;span class="op"&gt;=&lt;/span&gt;textwrap.indent(&lt;span class="st"&gt;&amp;#39;&lt;/span&gt;&lt;span class="ch"&gt;\n&lt;/span&gt;&lt;span class="st"&gt;&amp;#39;&lt;/span&gt;.join(&lt;span class="ss"&gt;f&amp;#39;__m256i r&lt;/span&gt;&lt;span class="sc"&gt;{i}&lt;/span&gt;&lt;span class="ss"&gt; = _mm256_setzero_si256();&amp;#39;&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-110" data-line-number="110"&gt;                                             &lt;span class="cf"&gt;for&lt;/span&gt; i &lt;span class="kw"&gt;in&lt;/span&gt; &lt;span class="bu"&gt;range&lt;/span&gt;(&lt;span class="dv"&gt;32&lt;/span&gt;)),&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-111" data-line-number="111"&gt;                                   &lt;span class="st"&gt;&amp;#39; &amp;#39;&lt;/span&gt;&lt;span class="op"&gt;*&lt;/span&gt;&lt;span class="dv"&gt;4&lt;/span&gt;),&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-112" data-line-number="112"&gt;    body&lt;span class="op"&gt;=&lt;/span&gt;textwrap.indent(&lt;span class="st"&gt;&amp;#39;&lt;/span&gt;&lt;span class="ch"&gt;\n&lt;/span&gt;&lt;span class="st"&gt;&amp;#39;&lt;/span&gt;.join(statements), &lt;span class="st"&gt;&amp;#39; &amp;#39;&lt;/span&gt;&lt;span class="op"&gt;*&lt;/span&gt;&lt;span class="dv"&gt;4&lt;/span&gt;))&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-113" data-line-number="113"&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb1-114" data-line-number="114"&gt;&lt;span class="bu"&gt;print&lt;/span&gt;(src)&lt;/a&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;This script outputs a C source file. Compile that with &lt;code&gt;gcc -o converted -mavx2 out.c&lt;/code&gt; and we can run the following script to leverage angr to solve for the value of &lt;code&gt;argv[2]&lt;/code&gt;.&lt;/p&gt;
+&lt;div class="sourceCode" id="cb2"&gt;&lt;pre class="sourceCode py"&gt;&lt;code class="sourceCode python"&gt;&lt;a class="sourceLine" id="cb2-1" data-line-number="1"&gt;&lt;span class="co"&gt;#!/usr/bin/env python3&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-2" data-line-number="2"&gt;&lt;span class="im"&gt;import&lt;/span&gt; angr&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-3" data-line-number="3"&gt;&lt;span class="im"&gt;import&lt;/span&gt; claripy&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-4" data-line-number="4"&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-5" data-line-number="5"&gt;proj &lt;span class="op"&gt;=&lt;/span&gt; angr.Project(&lt;span class="st"&gt;&amp;#39;./converted&amp;#39;&lt;/span&gt;)&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-6" data-line-number="6"&gt;main_addr &lt;span class="op"&gt;=&lt;/span&gt; proj.loader.find_symbol(&lt;span class="st"&gt;&amp;#39;main&amp;#39;&lt;/span&gt;).rebased_addr&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-7" data-line-number="7"&gt;&lt;span class="co"&gt;# Address of initializer for r0 (corresponds to vv_max.exe argv[1])&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-8" data-line-number="8"&gt;const0_addr &lt;span class="op"&gt;=&lt;/span&gt; proj.loader.find_symbol(&lt;span class="st"&gt;&amp;#39;CONST0&amp;#39;&lt;/span&gt;).rebased_addr&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-9" data-line-number="9"&gt;&lt;span class="co"&gt;# Address of initializer for r1 (corresponds to vv_max.exe argv[2])&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-10" data-line-number="10"&gt;const1_addr &lt;span class="op"&gt;=&lt;/span&gt; proj.loader.find_symbol(&lt;span class="st"&gt;&amp;#39;CONST1&amp;#39;&lt;/span&gt;).rebased_addr&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-11" data-line-number="11"&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-12" data-line-number="12"&gt;&lt;span class="co"&gt;# Write &amp;quot;FLARE2019&amp;quot; into CONST0&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-13" data-line-number="13"&gt;proj.loader.memory.store(const0_addr, b&lt;span class="st"&gt;&amp;#39;FLARE2019&amp;#39;&lt;/span&gt;)&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-14" data-line-number="14"&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-15" data-line-number="15"&gt;&lt;span class="co"&gt;# Find address of ret instruction in main()&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-16" data-line-number="16"&gt;cfg &lt;span class="op"&gt;=&lt;/span&gt; proj.analyses.CFGFast(force_complete_scan&lt;span class="op"&gt;=&lt;/span&gt;&lt;span class="va"&gt;False&lt;/span&gt;,&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-17" data-line-number="17"&gt;                            function_starts&lt;span class="op"&gt;=&lt;/span&gt;[main_addr])&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-18" data-line-number="18"&gt;ret_block, &lt;span class="op"&gt;=&lt;/span&gt; cfg.functions[main_addr].ret_sites&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-19" data-line-number="19"&gt;&lt;span class="cf"&gt;assert&lt;/span&gt; ret_block.bytestr[&lt;span class="op"&gt;-&lt;/span&gt;&lt;span class="dv"&gt;1&lt;/span&gt;] &lt;span class="op"&gt;==&lt;/span&gt; &lt;span class="bn"&gt;0xc3&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-20" data-line-number="20"&gt;ret_addr &lt;span class="op"&gt;=&lt;/span&gt; ret_block.addr &lt;span class="op"&gt;+&lt;/span&gt; ret_block.size &lt;span class="op"&gt;-&lt;/span&gt; &lt;span class="dv"&gt;1&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-21" data-line-number="21"&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-22" data-line-number="22"&gt;initial_state &lt;span class="op"&gt;=&lt;/span&gt; proj.factory.entry_state()&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-23" data-line-number="23"&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-24" data-line-number="24"&gt;simmgr &lt;span class="op"&gt;=&lt;/span&gt; proj.factory.simulation_manager(initial_state)&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-25" data-line-number="25"&gt;simmgr.explore(find&lt;span class="op"&gt;=&lt;/span&gt;main_addr).unstash(from_stash&lt;span class="op"&gt;=&lt;/span&gt;&lt;span class="st"&gt;&amp;#39;found&amp;#39;&lt;/span&gt;, to_stash&lt;span class="op"&gt;=&lt;/span&gt;&lt;span class="st"&gt;&amp;#39;active&amp;#39;&lt;/span&gt;)&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-26" data-line-number="26"&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-27" data-line-number="27"&gt;active, &lt;span class="op"&gt;=&lt;/span&gt; simmgr.active&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-28" data-line-number="28"&gt;arg2 &lt;span class="op"&gt;=&lt;/span&gt; claripy.BVS(&lt;span class="st"&gt;&amp;#39;arg2&amp;#39;&lt;/span&gt;, &lt;span class="bn"&gt;0x20&lt;/span&gt; &lt;span class="op"&gt;*&lt;/span&gt; &lt;span class="dv"&gt;8&lt;/span&gt;)&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-29" data-line-number="29"&gt;active.memory.store(const1_addr, arg2)&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-30" data-line-number="30"&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-31" data-line-number="31"&gt;simmgr.explore(find&lt;span class="op"&gt;=&lt;/span&gt;ret_addr)&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-32" data-line-number="32"&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-33" data-line-number="33"&gt;found, &lt;span class="op"&gt;=&lt;/span&gt; simmgr.found&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-34" data-line-number="34"&gt;found.solver.add(found.regs.eax &lt;span class="op"&gt;==&lt;/span&gt; &lt;span class="dv"&gt;-1&lt;/span&gt;)&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-35" data-line-number="35"&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-36" data-line-number="36"&gt;&lt;span class="co"&gt;# Restrict solutions to be alphanumeric&lt;/span&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-37" data-line-number="37"&gt;&lt;span class="cf"&gt;for&lt;/span&gt; b &lt;span class="kw"&gt;in&lt;/span&gt; arg2.chop(&lt;span class="dv"&gt;8&lt;/span&gt;):&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-38" data-line-number="38"&gt;    found.solver.add(found.solver.Or(&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-39" data-line-number="39"&gt;        found.solver.And(b &lt;span class="op"&gt;&amp;gt;=&lt;/span&gt; &lt;span class="bu"&gt;ord&lt;/span&gt;(&lt;span class="st"&gt;&amp;#39;A&amp;#39;&lt;/span&gt;), b &lt;span class="op"&gt;&amp;lt;=&lt;/span&gt; &lt;span class="bu"&gt;ord&lt;/span&gt;(&lt;span class="st"&gt;&amp;#39;Z&amp;#39;&lt;/span&gt;)),&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-40" data-line-number="40"&gt;        found.solver.And(b &lt;span class="op"&gt;&amp;gt;=&lt;/span&gt; &lt;span class="bu"&gt;ord&lt;/span&gt;(&lt;span class="st"&gt;&amp;#39;a&amp;#39;&lt;/span&gt;), b &lt;span class="op"&gt;&amp;lt;=&lt;/span&gt; &lt;span class="bu"&gt;ord&lt;/span&gt;(&lt;span class="st"&gt;&amp;#39;z&amp;#39;&lt;/span&gt;)),&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-41" data-line-number="41"&gt;        found.solver.And(b &lt;span class="op"&gt;&amp;gt;=&lt;/span&gt; &lt;span class="bu"&gt;ord&lt;/span&gt;(&lt;span class="st"&gt;&amp;#39;0&amp;#39;&lt;/span&gt;), b &lt;span class="op"&gt;&amp;lt;=&lt;/span&gt; &lt;span class="bu"&gt;ord&lt;/span&gt;(&lt;span class="st"&gt;&amp;#39;9&amp;#39;&lt;/span&gt;))))&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-42" data-line-number="42"&gt;&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-43" data-line-number="43"&gt;arg2_value &lt;span class="op"&gt;=&lt;/span&gt; found.solver.eval_one(arg2, cast_to&lt;span class="op"&gt;=&lt;/span&gt;&lt;span class="bu"&gt;bytes&lt;/span&gt;).decode(&lt;span class="st"&gt;&amp;#39;utf8&amp;#39;&lt;/span&gt;)&lt;/a&gt;
+&lt;a class="sourceLine" id="cb2-44" data-line-number="44"&gt;&lt;span class="bu"&gt;print&lt;/span&gt;(&lt;span class="ss"&gt;f&amp;#39;arg2 needs to be &amp;quot;&lt;/span&gt;&lt;span class="sc"&gt;{&lt;/span&gt;arg2_value&lt;span class="sc"&gt;}&lt;/span&gt;&lt;span class="ss"&gt;&amp;quot;&amp;#39;&lt;/span&gt;)&lt;/a&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Finally, we have what we need to solve the challenge!&lt;/p&gt;
+&lt;p&gt;&lt;img src="/img/2019-10-05-solve.png" title="Solving Flare-On 6 #11" /&gt;&lt;/p&gt;
+</content></entry><entry><title>Deriving Perspective and Parallel Projection Matrices</title><link href="https://dbarbs.net/posts/2018/05/deriving-perspective-and-parallel-projection-matrices/" rel="alternate"></link><published>2018-05-28T00:00:00-04:00</published><updated>2018-05-28T00:00:00-04:00</updated><author><name>Andrew Barbarello</name></author><id>tag:dbarbs.net,2018-05-28:/posts/2018/05/deriving-perspective-and-parallel-projection-matrices/</id><summary type="html">&lt;p&gt;An attempt to figure out where the magic matrices in &lt;code&gt;glOrtho&lt;/code&gt; and &lt;code&gt;glFrustum&lt;/code&gt; come from.&lt;/p&gt;</summary><content type="html">&lt;h2 id="the-perspective-projection-matrix"&gt;The Perspective Projection Matrix&lt;/h2&gt;
 &lt;p&gt;Here, we’re going to derive the &lt;a href="https://www.opengl.org/sdk/docs/man2/xhtml/glFrustum.xml"&gt;&lt;code&gt;glFrustum&lt;/code&gt;&lt;/a&gt; Perspective Projection matrix, which maps the &lt;em&gt;perspective&lt;/em&gt; view volume to the &lt;em&gt;parallel&lt;/em&gt; view volume. We start with coordinates in “eye space”, near and far clip plane distances &lt;span class="math inline"&gt;\(n\)&lt;/span&gt; and &lt;span class="math inline"&gt;\(f\)&lt;/span&gt; (a.k.a. &lt;code&gt;zNear, zFar&lt;/code&gt;), and bounds &lt;span class="math inline"&gt;\(t, b, l, r\)&lt;/span&gt; for the “general imaging rectangle” on the near clip plane as in Figure &lt;a href="#dppfig1"&gt;1&lt;/a&gt;.&lt;/p&gt;
 &lt;p&gt;&lt;a id="dppfig1"&gt;&lt;/a&gt;&lt;/p&gt;
 &lt;figure&gt;
